@@ -3,6 +3,8 @@ package com.databricks.zerobus;
 import com.google.protobuf.Message;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.Random;
@@ -37,7 +39,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * @see ZerobusStream
  * @see StreamConfigurationOptions
  */
-public class ZerobusSdk extends ZerobusSdkLogging {
+public class ZerobusSdk {
+  private static final Logger logger = LoggerFactory.getLogger(ZerobusSdk.class);
 
   // Constants
   private static final StreamConfigurationOptions DEFAULT_OPTIONS =
@@ -233,7 +236,7 @@ public class ZerobusSdk extends ZerobusSdkLogging {
     CompletableFuture<ZerobusStream<RecordType>> resultFuture = new CompletableFuture<>();
 
     try {
-      debug("Creating stream for table: " + tableProperties.getTableName());
+      logger.debug("Creating stream for table: " + tableProperties.getTableName());
 
       // Generate authentication token
       String token = TokenFactory.getZerobusToken(
@@ -276,7 +279,7 @@ public class ZerobusSdk extends ZerobusSdkLogging {
                 }
               });
     } catch (Throwable e) {
-      error("Failed to create stream with: " + e.getMessage(), e);
+      logger.error("Failed to create stream with: " + e.getMessage(), e);
 
       Throwable ex;
       if (e instanceof ZerobusException) {

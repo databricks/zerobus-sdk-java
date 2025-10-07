@@ -7,6 +7,9 @@ import io.grpc.stub.ClientResponseObserver;
 import io.grpc.stub.StreamObserver;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Message;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -122,7 +125,8 @@ class Record<T extends Message> {
  * Zerobus stream for ingesting records into a table.
  * Should be created using ZerobusSdk.createStream.
  */
-public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging {
+public class ZerobusStream<RecordType extends Message> {
+  private static final Logger logger = LoggerFactory.getLogger(ZerobusStream.class);
 
   // implicit ec: ExecutionContext - this is the ExecutionContext that client provides to run async operations (e.g.create stream async result processing)
   // zerobusStreamExecutor: ExecutionContext - This is used only for futures like timeout counter / stream recovery / stream unresponsiveness detection, so we don't block threads from customer's ExecutionContext
@@ -232,7 +236,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
   private synchronized void setState(StreamState newState) {
     state = newState;
     this.notifyAll();
-    debug("Stream state changed to " + newState);
+    logger.debug("Stream state changed to " + newState);
   }
 
   private CompletableFuture<Void> runWithTimeout(long timeoutMs, java.util.function.Supplier<CompletableFuture<Void>> getFuture) {
@@ -281,7 +285,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
 
     class RetryHelper {
       void tryNext(int attempt) {
-        debug("[" + context + "] Running attempt ... ");
+        logger.debug("[" + context + "] Running attempt ... ");
 
         f.get().whenComplete((response, error) -> {
           if (error == null) {
@@ -293,7 +297,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
             if (attempt < maxRetries - 1) {
               // Schedule next retry after backoff period
               CompletableFuture.runAsync(() -> {
-                debug("[" + context + "] Retrying in " + backoffMs + " ms ... ");
+                logger.debug("[" + context + "] Retrying in " + backoffMs + " ms ... ");
                 try {
                   Thread.sleep(backoffMs);
                 } catch (InterruptedException e) {
@@ -359,7 +363,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
             tableProperties.getTableName(),
             token);
 
-        debug("Generated new token and created stub for stream");
+        logger.debug("Generated new token and created stub for stream");
       } catch (NonRetriableException e) {
         createStreamTry.completeExceptionally(e);
         return createStreamTry;
@@ -371,7 +375,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
         (ClientCallStreamObserver<EphemeralStreamRequest>) stub.ephemeralStream(ackReceiver)
       );
 
-      debug("Creating ephemeral stream for table " + tableProperties.getTableName());
+      logger.debug("Creating ephemeral stream for table " + tableProperties.getTableName());
 
       // Create the initial request
       EphemeralStreamRequest createStreamRequest = EphemeralStreamRequest.newBuilder()
@@ -444,7 +448,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
 
     synchronized (this) {
       if (state != StreamState.UNINITIALIZED) {
-        error("Stream cannot be initialized/opened more than once");
+        logger.error("Stream cannot be initialized/opened more than once");
         initializeDone.completeExceptionally(
           new ZerobusException("Stream cannot be initialized/opened more than once")
         );
@@ -458,11 +462,11 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
       if (e == null) {
         setState(StreamState.OPENED);
         serverUnresponsivenessDetectionTask.start();
-        info("Stream created successfully with id " + streamId.get());
+        logger.info("Stream created successfully with id " + streamId.get());
         initializeDone.complete(null);
       } else {
         setState(StreamState.FAILED);
-        error("Failed to create stream: ", e);
+        logger.error("Failed to create stream: ", e);
         if (e instanceof ZerobusException) {
           initializeDone.completeExceptionally(e);
         } else {
@@ -482,7 +486,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
    */
   private void closeStream(boolean hardFailure, Optional<ZerobusException> exception) {
     synchronized (this) {
-      debug("Closing stream, hardFailure: " + hardFailure);
+      logger.debug("Closing stream, hardFailure: " + hardFailure);
 
       if (hardFailure && exception.isPresent()) {
         // CRITICAL: Atomically mark stream as FAILED before processing unacked records.
@@ -499,13 +503,13 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
         }
       } catch (Exception e) {
         // Ignore errors during stream cleanup - stream may already be closed
-        debug("Error while closing stream: " + e.getMessage());
+        logger.debug("Error while closing stream: " + e.getMessage());
       }
 
       // For hard failures, preserve unacked records so they can be retried via recreateStream()
       if (hardFailure) {
         serverUnresponsivenessDetectionTask.cancel();
-        debug("Stream closing: Failing all unacked records");
+        logger.debug("Stream closing: Failing all unacked records");
 
         while (!inflightRecords.isEmpty()) {
           try {
@@ -591,10 +595,10 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
 
     CompletableFuture.runAsync(() -> {
       if (!options.recovery()) {
-        debug("Stream recovery is disabled");
+        logger.debug("Stream recovery is disabled");
         recoverStreamDone.completeExceptionally(new ZerobusException("Stream recovery is disabled"));
       } else {
-        warn("Stream broken! Running stream recovery for stream id '" + streamId.orElse("unknown") + "' ... ");
+        logger.warn("Stream broken! Running stream recovery for stream id '" + streamId.orElse("unknown") + "' ... ");
 
         // Close the broken stream but don't mark as hard failure since we're attempting recovery
         closeStream(false, Optional.empty());
@@ -605,19 +609,19 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
           int leftRetries = Math.max(0, retries - streamFailureInfo.getFailureCounts() + 1);
 
           if (leftRetries == 0) {
-            debug("Stream recovery failed: Run out of retries");
+            logger.debug("Stream recovery failed: Run out of retries");
             recoverStreamDone.completeExceptionally(new ZerobusException("Stream recovery failed"));
             return;
           }
 
-          debug("Stream recovery: Running with " + leftRetries + " / " + retries + " retries left");
+          logger.debug("Stream recovery: Running with " + leftRetries + " / " + retries + " retries left");
 
           runWithRetries(leftRetries, "RecoverStream", () -> {
             CompletableFuture<Void> recoverStreamTry = new CompletableFuture<>();
 
             createStream().whenComplete((result, e) -> {
               if (e != null) {
-                debug("Stream recovery: Failed to create stream: " + e.getMessage());
+                logger.debug("Stream recovery: Failed to create stream: " + e.getMessage());
                 recoverStreamTry.completeExceptionally(e);
               } else {
                 enqueueRecordsForResending();
@@ -628,10 +632,10 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
             return recoverStreamTry;
           }).whenComplete((result, e) -> {
             if (e == null) {
-              info("Stream recovery completed successfully. New stream id: " + streamId.get());
+              logger.info("Stream recovery completed successfully. New stream id: " + streamId.get());
               recoverStreamDone.complete(null);
             } else {
-              error("Stream recovery failed: " + e.getMessage(), e);
+              logger.error("Stream recovery failed: " + e.getMessage(), e);
               recoverStreamDone.completeExceptionally(e);
             }
           });
@@ -676,7 +680,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
       }
 
       if (error.isPresent()) {
-        error("Stream failed: " + error.get().getMessage(), error.get());
+        logger.error("Stream failed: " + error.get().getMessage(), error.get());
       }
 
       // Check if this is a non-retriable error - if so, don't attempt recovery
@@ -693,9 +697,9 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
       recoverStream().whenComplete((result, e) -> {
         if (e == null) {
           setState(StreamState.OPENED);
-          info("Stream recovered successfully with id " + streamId.get());
+          logger.info("Stream recovered successfully with id " + streamId.get());
         } else {
-          error("Stream recovery failed", e);
+          logger.error("Stream recovery failed", e);
           closeStream(true, exception);
         }
       });
@@ -723,7 +727,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
             break;
 
           case RECOVERING:
-            debug("Server unresponsiveness detection task: Waiting for stream to finish recovering");
+            logger.debug("Server unresponsiveness detection task: Waiting for stream to finish recovering");
             try {
               ZerobusStream.this.wait();
             } catch (InterruptedException e) {
@@ -734,7 +738,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
           case OPENED:
           case FLUSHING:
             if (inflightRecords.isEmpty()) {
-              debug("Server unresponsiveness detection task: Waiting for some records to be ingested");
+              logger.debug("Server unresponsiveness detection task: Waiting for some records to be ingested");
               try {
                 ZerobusStream.this.wait();
               } catch (InterruptedException e) {
@@ -780,7 +784,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
     error -> {
       // This should never happen (task won't throw any errors), but if it does, we need to handle it
       // and it probably won't be recoverable
-      error("Server unresponsiveness detection task failed: " + error.getMessage(), error);
+      logger.error("Server unresponsiveness detection task failed: " + error.getMessage(), error);
 
       closeStreamAsync(
         true,
@@ -864,7 +868,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
               sendMessage(recordRequest.get());
               streamFailureInfo.resetFailure(StreamFailureType.SENDING_MESSAGE);
             } catch (Exception ex) {
-              error("Error while sending record: " + ex.getMessage(), ex);
+              logger.error("Error while sending record: " + ex.getMessage(), ex);
 
               // Use async to avoid deadlock: handleStreamFailed() may call closeStream()
               // which waits for this task to stop.
@@ -892,7 +896,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
     error -> {
       // This should never happen (task won't throw any errors), but if it does, we need to handle it
       // and it probably won't be recoverable
-      error("Records sender task failed: " + error.getMessage(), error);
+      logger.error("Records sender task failed: " + error.getMessage(), error);
 
       closeStreamAsync(
         true,
@@ -936,7 +940,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
             if (!ackReceiverStreamId.isPresent() || ackReceiverStreamId.get() == null) {
               throw new RuntimeException(new ZerobusException("Invalid response from server: stream id is missing"));
             }
-            debug("Stream created with id " + ackReceiverStreamId.get());
+            logger.debug("Stream created with id " + ackReceiverStreamId.get());
             streamCreatedEvent.get().complete(ackReceiverStreamId.get());
             break;
 
@@ -946,7 +950,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
               new RuntimeException(new ZerobusException("Invalid response from server: expected stream id but got record ack"))
             );
             long ackedOffsetId = response.getIngestRecordResponse().getDurabilityAckUpToOffset();
-            debug("Acked offset " + ackedOffsetId);
+            logger.debug("Acked offset " + ackedOffsetId);
 
             synchronized (ZerobusStream.this) {
 
@@ -995,7 +999,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
               CompletableFuture.runAsync(() -> {
                 options.ackCallback().get().accept(response.getIngestRecordResponse());
               }, ec).exceptionally(e -> {
-                error(
+                logger.error(
                   "Exception in async ack_callback for offset " + response.getIngestRecordResponse().getDurabilityAckUpToOffset(),
                   e
                 );
@@ -1012,7 +1016,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
                 durationMs = response.getCloseStreamSignal().getDuration().getSeconds() * 1000.0 +
                   response.getCloseStreamSignal().getDuration().getNanos() / 1000000.0;
               }
-              info(String.format("Server will close the stream in %.3fms. Triggering stream recovery.", durationMs));
+              logger.info(String.format("Server will close the stream in %.3fms. Triggering stream recovery.", durationMs));
               handleStreamFailed(StreamFailureType.SERVER_CLOSED_STREAM, Optional.empty());
             }
             break;
@@ -1041,7 +1045,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
 
       @Override
       public void onCompleted() {
-        debug("Server called close on the stream");
+        logger.debug("Server called close on the stream");
         handleStreamFailed(StreamFailureType.SERVER_CLOSED_STREAM, Optional.empty());
       }
     };
@@ -1074,7 +1078,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
           switch (state) {
             case RECOVERING:
             case FLUSHING:
-              debug("Ingest record: Waiting for stream " + streamId.orElse("") + " to finish recovering/flushing");
+              logger.debug("Ingest record: Waiting for stream " + streamId.orElse("") + " to finish recovering/flushing");
               try {
                 this.wait();
               } catch (InterruptedException e) {
@@ -1085,7 +1089,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
             case FAILED:
             case CLOSED:
             case UNINITIALIZED:
-              error("Cannot ingest record when stream is closed or not opened for stream ID " + streamId.orElse("unknown"));
+              logger.error("Cannot ingest record when stream is closed or not opened for stream ID " + streamId.orElse("unknown"));
               throw new RuntimeException(new ZerobusException(
                 "Cannot ingest record when stream is closed or not opened for stream ID " + streamId.orElse("unknown")
               ));
@@ -1093,7 +1097,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
               if (inflightRecords.remainingCapacity() > 0) {
                 recordQueueFull = false;
               } else {
-                debug("Ingest record: Waiting for space in the queue");
+                logger.debug("Ingest record: Waiting for space in the queue");
                 try {
                   this.wait();
                 } catch (InterruptedException e) {
@@ -1149,16 +1153,16 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
    */
   public void flush() throws ZerobusException {
     synchronized (this) {
-      debug("Flushing stream ...");
+      logger.debug("Flushing stream ...");
 
       try {
         if (state == StreamState.UNINITIALIZED) {
-          error("Cannot flush stream when it is not opened");
+          logger.error("Cannot flush stream when it is not opened");
           throw new ZerobusException("Cannot flush stream when it is not opened");
         }
 
         while (state == StreamState.RECOVERING) {
-          debug("Flushing stream: Waiting for stream to finish recovering");
+          logger.debug("Flushing stream: Waiting for stream to finish recovering");
           try {
             this.wait();
           } catch (InterruptedException e) {
@@ -1176,7 +1180,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
         boolean recordsFlushed = false;
         while (!recordsFlushed) {
           if (state == StreamState.FAILED) {
-            error("Stream failed, cannot flush");
+            logger.error("Stream failed, cannot flush");
             throw new ZerobusException("Stream failed, cannot flush");
           } else {
             if (inflightRecords.isEmpty()) {
@@ -1185,16 +1189,16 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
               long remainingTime = options.flushTimeoutMs() - (System.currentTimeMillis() - startTime);
 
               if (remainingTime <= 0) {
-                error("Flushing stream timed out");
+                logger.error("Flushing stream timed out");
                 throw new ZerobusException("Flushing stream timed out");
               }
 
               try {
-                debug("Waiting for " + remainingTime + "ms to flush stream ...");
+                logger.debug("Waiting for " + remainingTime + "ms to flush stream ...");
                 this.wait(remainingTime);
               } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                error("Error while flushing stream: " + e.getMessage(), e);
+                logger.error("Error while flushing stream: " + e.getMessage(), e);
                 throw new ZerobusException("Error while flushing stream", e);
               }
             }
@@ -1202,11 +1206,11 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
         }
 
         if (!inflightRecords.isEmpty()) {
-          error("Flushing stream timed out");
+          logger.error("Flushing stream timed out");
           throw new ZerobusException("Flushing stream timed out");
         }
 
-        info("All records have been flushed");
+        logger.info("All records have been flushed");
       } finally {
         if (state == StreamState.FLUSHING) {
           setState(StreamState.OPENED);
@@ -1227,19 +1231,19 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
       while (!readyToClose) {
         switch (state) {
           case UNINITIALIZED:
-            error("Cannot close stream when it is not opened");
+            logger.error("Cannot close stream when it is not opened");
             throw new ZerobusException("Cannot close stream when it is not opened");
           case FAILED:
-            error("Stream failed and cannot be gracefully closed");
+            logger.error("Stream failed and cannot be gracefully closed");
             throw new ZerobusException("Stream failed and cannot be gracefully closed");
           case CLOSED:
             // Idempotent operation
-            debug("Close stream: Stream is already closed");
+            logger.debug("Close stream: Stream is already closed");
             return;
           case FLUSHING:
           case RECOVERING:
             // Wait until the stream is flushed or recovering
-            debug("Close stream: Waiting for stream to finish flushing/recovering");
+            logger.debug("Close stream: Waiting for stream to finish flushing/recovering");
             try {
               this.wait();
             } catch (InterruptedException e) {
@@ -1271,7 +1275,7 @@ public class ZerobusStream<RecordType extends Message> extends ZerobusSdkLogging
       closeStream(true, receivedException);
     }
 
-    info("Stream gracefully closed");
+    logger.info("Stream gracefully closed");
   }
 
   public ZerobusStream(

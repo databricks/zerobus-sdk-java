@@ -1,5 +1,8 @@
 package com.databricks.zerobus;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -9,7 +12,9 @@ import java.util.function.Consumer;
  * A background task that runs repeatedly until cancelled.
  * Handles task execution, error handling, and cancellation.
  */
-class BackgroundTask extends ZerobusSdkLogging {
+class BackgroundTask {
+    private static final Logger logger = LoggerFactory.getLogger(BackgroundTask.class);
+
     private final Consumer<CompletableFuture<Void>> task;
     private final Consumer<Throwable> taskFailureHandler;
     private final long delayMillis;
@@ -79,7 +84,7 @@ class BackgroundTask extends ZerobusSdkLogging {
                     }
                 }
             } catch (Throwable e) {
-                error("Background task failed", e);
+                logger.error("Background task failed", e);
             } finally {
                 synchronized (this) {
                     isActive.set(false);
