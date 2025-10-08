@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *     clientId,
  *     clientSecret,
  *     options
- * );
+ * ).join();
  * }</pre>
  *
  * @see ZerobusStream
@@ -144,95 +144,15 @@ public class ZerobusSdk {
    * @param options Configuration options for the stream including timeouts, retry settings, and
    *     callback functions.
    * @param <RecordType> The type of records to be ingested (must extend Message).
-   * @return A ZerobusStream when the stream is ready.
-   * @throws ZerobusException If creating the stream fails.
+   * @return A CompletableFuture that completes with the ZerobusStream when the stream is ready.
    */
-  public <RecordType extends Message> ZerobusStream<RecordType> createStream(
+  public <RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>> createStream(
       TableProperties<RecordType> tableProperties,
       String clientId,
       String clientSecret,
-      StreamConfigurationOptions options)
-      throws ZerobusException {
+      StreamConfigurationOptions options) {
+
     ExecutorService streamExecutor = createStreamExecutor();
-    try {
-      return createStreamImpl(
-              tableProperties, clientId, clientSecret, options, streamExecutor, streamExecutor)
-          .join();
-    } catch (java.util.concurrent.CompletionException e) {
-      // Unwrap CompletionException to get the original cause
-      Throwable cause = e.getCause();
-      if (cause instanceof ZerobusException) {
-        throw (ZerobusException) cause;
-      }
-      throw new ZerobusException("Stream creation failed: " + cause.getMessage(), cause);
-    }
-  }
-
-  /**
-   * Creates a new gRPC stream for ingesting records into a table with default options.
-   *
-   * @param tableProperties Configuration for the target table including table name and record type
-   *     information.
-   * @param clientId The OAuth client ID for authentication.
-   * @param clientSecret The OAuth client secret for authentication.
-   * @param <RecordType> The type of records to be ingested (must extend Message).
-   * @return A ZerobusStream when the stream is ready.
-   * @throws ZerobusException If creating the stream fails.
-   */
-  public <RecordType extends Message> ZerobusStream<RecordType> createStream(
-      TableProperties<RecordType> tableProperties, String clientId, String clientSecret)
-      throws ZerobusException {
-    return this.createStream(tableProperties, clientId, clientSecret, DEFAULT_OPTIONS);
-  }
-
-  /**
-   * Recreate stream from a failed stream.
-   *
-   * <p>Uses the same table properties and stream options as the failed stream. It will also ingest
-   * all unacknowledged records from the failed stream.
-   *
-   * @param stream The stream to be recreated.
-   * @param <RecordType> The type of records to be ingested (must extend Message).
-   * @return A ZerobusStream when the stream is ready.
-   * @throws ZerobusException If recreating the stream fails.
-   */
-  public <RecordType extends Message> ZerobusStream<RecordType> recreateStream(
-      ZerobusStream<RecordType> stream) throws ZerobusException {
-    ExecutorService streamExecutor = createStreamExecutor();
-    try {
-      return recreateStreamImpl(stream, streamExecutor, streamExecutor)
-          .join();
-    } catch (java.util.concurrent.CompletionException e) {
-      // Unwrap CompletionException to get the original cause
-      Throwable cause = e.getCause();
-      if (cause instanceof ZerobusException) {
-        throw (ZerobusException) cause;
-      }
-      throw new ZerobusException("Stream recreation failed: " + cause.getMessage(), cause);
-    }
-  }
-
-  /**
-   * Create a stream in the Zerobus service.
-   * Returns ZerobusStream object which can be used to send messages to the stream.
-   *
-   * @param tableProperties The table properties
-   * @param clientId The OAuth client ID for authentication
-   * @param clientSecret The OAuth client secret for authentication
-   * @param options The stream configuration options
-   * @param streamReservedExecutor The executor reserved for stream operations
-   * @param ec The executor for async operations
-   * @param <RecordType> The record type
-   * @return A CompletableFuture that completes with the ZerobusStream
-   */
-  private <RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>> createStreamImpl(
-      TableProperties<RecordType> tableProperties,
-      String clientId,
-      String clientSecret,
-      StreamConfigurationOptions options,
-      ExecutorService streamReservedExecutor,
-      ExecutorService ec) {
-
     CompletableFuture<ZerobusStream<RecordType>> resultFuture = new CompletableFuture<>();
 
     try {
@@ -265,8 +185,8 @@ public class ZerobusSdk {
               clientId,
               clientSecret,
               options,
-              streamReservedExecutor,
-              ec);
+              streamExecutor,
+              streamExecutor);
 
       stream
           .initialize()
@@ -304,40 +224,54 @@ public class ZerobusSdk {
   }
 
   /**
+   * Creates a new gRPC stream for ingesting records into a table with default options.
+   *
+   * @param tableProperties Configuration for the target table including table name and record type
+   *     information.
+   * @param clientId The OAuth client ID for authentication.
+   * @param clientSecret The OAuth client secret for authentication.
+   * @param <RecordType> The type of records to be ingested (must extend Message).
+   * @return A CompletableFuture that completes with the ZerobusStream when the stream is ready.
+   */
+  public <RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>> createStream(
+      TableProperties<RecordType> tableProperties, String clientId, String clientSecret) {
+    return this.createStream(tableProperties, clientId, clientSecret, DEFAULT_OPTIONS);
+  }
+
+  /**
    * Recreate stream from a failed stream.
    *
-   * @param failedStream The failed stream
-   * @param streamReservedExecutor The executor reserved for stream operations
-   * @param ec The executor for async operations
-   * @param <RecordType> The record type
-   * @return A CompletableFuture that completes with the new ZerobusStream
+   * <p>Uses the same table properties and stream options as the failed stream. It will also ingest
+   * all unacknowledged records from the failed stream.
+   *
+   * @param failedStream The stream to be recreated.
+   * @param <RecordType> The type of records to be ingested (must extend Message).
+   * @return A CompletableFuture that completes with the new ZerobusStream when the stream is ready.
    */
-  private <RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>>
-      recreateStreamImpl(
-          ZerobusStream<RecordType> failedStream,
-          ExecutorService streamReservedExecutor,
-          ExecutorService ec) {
+  public <RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>> recreateStream(
+      ZerobusStream<RecordType> failedStream) {
 
     CompletableFuture<ZerobusStream<RecordType>> resultFuture = new CompletableFuture<>();
 
-    createStreamImpl(
+    createStream(
             failedStream.getTableProperties(),
             failedStream.getClientId(),
             failedStream.getClientSecret(),
-            failedStream.getOptions(),
-            streamReservedExecutor,
-            ec)
+            failedStream.getOptions())
         .whenComplete(
             (stream, error) -> {
               if (error == null) {
                 // ingest unacked records
                 Iterator<RecordType> unackedRecords = failedStream.getUnackedRecords();
 
-                while (unackedRecords.hasNext()) {
-                  stream.ingestRecord(unackedRecords.next());
+                try {
+                  while (unackedRecords.hasNext()) {
+                    stream.ingestRecord(unackedRecords.next());
+                  }
+                  resultFuture.complete(stream);
+                } catch (ZerobusException e) {
+                  resultFuture.completeExceptionally(e);
                 }
-
-                resultFuture.complete(stream);
               } else {
                 resultFuture.completeExceptionally(error);
               }

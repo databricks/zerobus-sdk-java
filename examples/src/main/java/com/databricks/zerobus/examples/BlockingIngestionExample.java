@@ -47,7 +47,7 @@ public class BlockingIngestionExample {
                 tableProperties,
                 CLIENT_ID,
                 CLIENT_SECRET
-            );
+            ).join();
             System.out.println("✓ Stream created: " + stream.getStreamId());
 
             // Step 4: Ingest records synchronously
@@ -65,13 +65,7 @@ public class BlockingIngestionExample {
                         .build();
 
                     // Ingest and wait for durability
-                    IngestRecordResult result = stream.ingestRecord(record);
-
-                    // Wait for SDK to accept the record
-                    result.getRecordAccepted().join();
-
-                    // Wait for record to be durably written
-                    result.getWriteCompleted().join();
+                    stream.ingestRecord(record).join();
 
                     successCount++;
 

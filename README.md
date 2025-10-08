@@ -219,7 +219,7 @@ public class ZerobusClient {
             tableProperties,
             clientId,
             clientSecret
-        );
+        ).join();
 
         try {
             // Ingest records
@@ -230,8 +230,7 @@ public class ZerobusClient {
                     .setHumidity(50 + (i % 40))
                     .build();
 
-                IngestRecordResult result = stream.ingestRecord(record);
-                result.getWriteCompleted().join(); // Wait for durability
+                stream.ingestRecord(record).join(); // Wait for durability
 
                 System.out.println("Ingested record " + (i + 1));
             }
@@ -282,7 +281,7 @@ ZerobusStream<AirQuality> stream = sdk.createStream(
     tableProperties,
     clientId,
     clientSecret
-);
+).join();
 
 try {
     for (int i = 0; i < 1000; i++) {
@@ -292,8 +291,7 @@ try {
             .setHumidity(50 + i % 40)
             .build();
 
-        IngestRecordResult result = stream.ingestRecord(record);
-        result.getWriteCompleted().join(); // Wait for durability
+        stream.ingestRecord(record).join(); // Wait for durability
     }
 } finally {
     stream.close();
@@ -317,7 +315,7 @@ ZerobusStream<AirQuality> stream = sdk.createStream(
     clientId,
     clientSecret,
     options
-);
+).join();
 
 List<CompletableFuture<Void>> futures = new ArrayList<>();
 
@@ -329,8 +327,7 @@ try {
             .setHumidity(50 + i % 40)
             .build();
 
-        IngestRecordResult result = stream.ingestRecord(record);
-        futures.add(result.getWriteCompleted());
+        futures.add(stream.ingestRecord(record));
     }
 
     // Flush and wait for all records
@@ -458,30 +455,30 @@ ZerobusSdk(String serverEndpoint, String unityCatalogEndpoint)
 **Methods:**
 
 ```java
-<RecordType extends Message> ZerobusStream<RecordType> createStream(
+<RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>> createStream(
     TableProperties<RecordType> tableProperties,
     String clientId,
     String clientSecret,
     StreamConfigurationOptions options
-) throws ZerobusException
+)
 ```
-Creates a new ingestion stream with custom configuration.
+Creates a new ingestion stream with custom configuration. Returns a CompletableFuture that completes when the stream is ready.
 
 ```java
-<RecordType extends Message> ZerobusStream<RecordType> createStream(
+<RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>> createStream(
     TableProperties<RecordType> tableProperties,
     String clientId,
     String clientSecret
-) throws ZerobusException
+)
 ```
-Creates a new ingestion stream with default configuration.
+Creates a new ingestion stream with default configuration. Returns a CompletableFuture that completes when the stream is ready.
 
 ```java
-<RecordType extends Message> ZerobusStream<RecordType> recreateStream(
+<RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>> recreateStream(
     ZerobusStream<RecordType> stream
-) throws ZerobusException
+)
 ```
-Recreates a failed stream, resending unacknowledged records.
+Recreates a failed stream, resending unacknowledged records. Returns a CompletableFuture that completes when the stream is ready.
 
 ---
 
@@ -492,9 +489,9 @@ Represents an active ingestion stream.
 **Methods:**
 
 ```java
-IngestRecordResult ingestRecord(RecordType record)
+CompletableFuture<Void> ingestRecord(RecordType record) throws ZerobusException
 ```
-Ingests a single record into the stream. Returns futures for tracking ingestion progress.
+Ingests a single record into the stream. Returns a future that completes when the record is durably written to storage.
 
 ```java
 void flush() throws ZerobusException
@@ -621,24 +618,6 @@ Sets a callback to be invoked when records are acknowledged by the server.
 StreamConfigurationOptions build()
 ```
 Builds and returns the `StreamConfigurationOptions` instance.
-
----
-
-### IngestRecordResult
-
-Result of an asynchronous record ingestion operation.
-
-**Methods:**
-
-```java
-CompletableFuture<Void> getRecordAccepted()
-```
-Returns a future that completes when the SDK accepts the record for processing (fast).
-
-```java
-CompletableFuture<Void> getWriteCompleted()
-```
-Returns a future that completes when the record is durably written to storage (slower).
 
 ---
 

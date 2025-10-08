@@ -1059,90 +1059,82 @@ public class ZerobusStream<RecordType extends Message> {
    * Ingests a record into the stream.
    *
    * @param record The record to ingest.
-   * @return An IngestRecordResult containing two futures:
-   *   - recordAccepted: completes when the SDK accepts and queues the record for processing
-   *   - writeCompleted: completes when the server acknowledges the record has been durably stored
-   *   If either future raises an exception, the record most probably was not acknowledged,
+   * @return A CompletableFuture that completes when the server acknowledges the record has been durably stored.
+   *   If the future raises an exception, the record most probably was not acknowledged,
    *   but it is also possible that the server acknowledged the record but the response was lost.
    *   In this case client should decide whether to retry the record or not.
+   * @throws ZerobusException if the stream is not in a valid state for ingestion
    */
-  public IngestRecordResult ingestRecord(RecordType record) {
-    CompletableFuture<Void> enqueuePromise = new CompletableFuture<>();
+  public CompletableFuture<Void> ingestRecord(RecordType record) throws ZerobusException {
     CompletableFuture<Void> durabilityPromise = new CompletableFuture<>();
 
-    CompletableFuture.runAsync(() -> {
-      synchronized (this) {
-        // Wait until there is space in the queue
-        boolean recordQueueFull = true;
-        while (recordQueueFull) {
-          switch (state) {
-            case RECOVERING:
-            case FLUSHING:
-              logger.debug("Ingest record: Waiting for stream " + streamId.orElse("") + " to finish recovering/flushing");
+    synchronized (this) {
+      // Wait until there is space in the queue
+      boolean recordQueueFull = true;
+      while (recordQueueFull) {
+        switch (state) {
+          case RECOVERING:
+          case FLUSHING:
+            logger.debug("Ingest record: Waiting for stream " + streamId.orElse("") + " to finish recovering/flushing");
+            try {
+              this.wait();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              durabilityPromise.completeExceptionally(new ZerobusException("Interrupted while waiting for stream", e));
+              return durabilityPromise;
+            }
+            break;
+          case FAILED:
+          case CLOSED:
+          case UNINITIALIZED:
+            logger.error("Cannot ingest record when stream is closed or not opened for stream ID " + streamId.orElse("unknown"));
+            throw new ZerobusException(
+              "Cannot ingest record when stream is closed or not opened for stream ID " + streamId.orElse("unknown")
+            );
+          case OPENED:
+            if (inflightRecords.remainingCapacity() > 0) {
+              recordQueueFull = false;
+            } else {
+              logger.debug("Ingest record: Waiting for space in the queue");
               try {
                 this.wait();
               } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
+                durabilityPromise.completeExceptionally(new ZerobusException("Interrupted while waiting for space in queue", e));
+                return durabilityPromise;
               }
-              break;
-            case FAILED:
-            case CLOSED:
-            case UNINITIALIZED:
-              logger.error("Cannot ingest record when stream is closed or not opened for stream ID " + streamId.orElse("unknown"));
-              throw new RuntimeException(new ZerobusException(
-                "Cannot ingest record when stream is closed or not opened for stream ID " + streamId.orElse("unknown")
-              ));
-            case OPENED:
-              if (inflightRecords.remainingCapacity() > 0) {
-                recordQueueFull = false;
-              } else {
-                logger.debug("Ingest record: Waiting for space in the queue");
-                try {
-                  this.wait();
-                } catch (InterruptedException e) {
-                  Thread.currentThread().interrupt();
-                  throw new RuntimeException(e);
-                }
-              }
-              break;
-          }
+            }
+            break;
         }
-
-        ByteString protoEncodedRecord = ByteString.copyFrom(record.toByteArray());
-        lastSentOffsetId += 1;
-        long offsetId = lastSentOffsetId;
-
-        try {
-          inflightRecords.put(new Record<>(offsetId, record, protoEncodedRecord, durabilityPromise));
-
-          recordsQueuedForSending.put(
-            EphemeralStreamRequest.newBuilder()
-              .setIngestRecord(
-                IngestRecordRequest.newBuilder()
-                  .setOffsetId(offsetId)
-                  .setProtoEncodedRecord(protoEncodedRecord)
-                  .build()
-              )
-              .build()
-          );
-        } catch (InterruptedException e) {
-          Thread.currentThread().interrupt();
-          throw new RuntimeException(e);
-        }
-
-        this.notifyAll();
       }
-    }, zerobusStreamExecutor).whenComplete((result, ex) -> {
-      if (ex == null) {
-        enqueuePromise.complete(null);
-      } else {
-        enqueuePromise.completeExceptionally(ex);
-        durabilityPromise.completeExceptionally(ex);
-      }
-    });
 
-    return new IngestRecordResult(enqueuePromise, durabilityPromise);
+      ByteString protoEncodedRecord = ByteString.copyFrom(record.toByteArray());
+      lastSentOffsetId += 1;
+      long offsetId = lastSentOffsetId;
+
+      try {
+        inflightRecords.put(new Record<>(offsetId, record, protoEncodedRecord, durabilityPromise));
+
+        recordsQueuedForSending.put(
+          EphemeralStreamRequest.newBuilder()
+            .setIngestRecord(
+              IngestRecordRequest.newBuilder()
+                .setOffsetId(offsetId)
+                .setProtoEncodedRecord(protoEncodedRecord)
+                .build()
+            )
+            .build()
+        );
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        durabilityPromise.completeExceptionally(new ZerobusException("Interrupted while enqueuing record", e));
+        return durabilityPromise;
+      }
+
+      this.notifyAll();
+    }
+
+    return durabilityPromise;
   }
 
   /**
