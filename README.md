@@ -1,8 +1,5 @@
 # Databricks Zerobus Ingest SDK for Java
 
-[![Maven Central](https://img.shields.io/badge/maven--central-0.1.0--SNAPSHOT-blue)](https://central.sonatype.com/)
-[![Java](https://img.shields.io/badge/java-8%2B-blue)](https://www.oracle.com/java/)
-
 The Databricks Zerobus Ingest SDK for Java provides a high-performance client for ingesting data directly into Databricks Delta tables using the Zerobus streaming protocol.
 
 ## Features
@@ -17,7 +14,7 @@ The Databricks Zerobus Ingest SDK for Java provides a high-performance client fo
 
 ### Runtime Requirements
 
-- **Java**: 8 or higher
+- **Java**: 8 or higher - [Download Java](https://adoptium.net/)
 - **Databricks workspace** with Zerobus access enabled
 
 ### Dependencies
@@ -27,18 +24,19 @@ The Databricks Zerobus Ingest SDK for Java provides a high-performance client fo
 - Includes `slf4j-simple` for logging out of the box
 
 **When using the regular JAR**:
-- `protobuf-java` 3.24.0
-- `grpc-netty-shaded` 1.58.0
-- `grpc-protobuf` 1.58.0
-- `grpc-stub` 1.58.0
-- `javax.annotation-api` 1.3.2
-- `slf4j-api` 1.7.36
-- `slf4j-simple` 1.7.36 (or substitute your own SLF4J implementation like `logback-classic` 1.2.11)
+- [`protobuf-java` 3.24.0](https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java/3.24.0)
+- [`grpc-netty-shaded` 1.58.0](https://mvnrepository.com/artifact/io.grpc/grpc-netty-shaded/1.58.0)
+- [`grpc-protobuf` 1.58.0](https://mvnrepository.com/artifact/io.grpc/grpc-protobuf/1.58.0)
+- [`grpc-stub` 1.58.0](https://mvnrepository.com/artifact/io.grpc/grpc-stub/1.58.0)
+- [`javax.annotation-api` 1.3.2](https://mvnrepository.com/artifact/javax.annotation/javax.annotation-api/1.3.2)
+- [`slf4j-api` 1.7.36](https://mvnrepository.com/artifact/org.slf4j/slf4j-api/1.7.36)
+- [`slf4j-simple` 1.7.36](https://mvnrepository.com/artifact/org.slf4j/slf4j-simple/1.7.36) (or substitute your own SLF4J implementation like [`logback-classic` 1.2.11](https://mvnrepository.com/artifact/ch.qos.logback/logback-classic/1.2.11))
 
 ### Build Requirements (only for building from source)
 
-- **Maven**: 3.6 or higher
-- **Protocol Buffers Compiler** (`protoc`): 3.24.0 (for compiling your own `.proto` schemas)
+- **Java**: 8 or higher - [Download Java](https://adoptium.net/)
+- **Maven**: 3.6 or higher - [Download Maven](https://maven.apache.org/download.cgi)
+- **Protocol Buffers Compiler** (`protoc`): 24.4 - [Download protoc](https://github.com/protocolbuffers/protobuf/releases/tag/v24.4) (for compiling your own `.proto` schemas)
 
 ## Quick Start User Guide
 
@@ -114,11 +112,11 @@ mvn clean package
 
 This generates two JAR files in the `target/` directory:
 
-- **Regular JAR**: `zerobus-ingest-sdk-java-0.1.0-SNAPSHOT.jar` (144KB)
+- **Regular JAR**: `databricks-zerobus-ingest-sdk-0.1.0.jar` (144KB)
   - Contains only the SDK classes
   - Requires all dependencies on the classpath
 
-- **Fat JAR**: `zerobus-ingest-sdk-java-0.1.0-SNAPSHOT-jar-with-dependencies.jar` (18MB)
+- **Fat JAR**: `databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar` (18MB)
   - Contains SDK classes plus all dependencies bundled
   - Self-contained, easier to deploy
 
@@ -149,14 +147,14 @@ my-zerobus-app/
 │       └── proto/
 │           └── record.proto
 └── lib/
-    └── zerobus-ingest-sdk-java-0.1.0-SNAPSHOT-jar-with-dependencies.jar
+    └── databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar
 ```
 
 Copy the fat JAR to your project:
 
 ```bash
 mkdir lib
-cp ../zerobus-sdk-java/target/zerobus-ingest-sdk-java-0.1.0-SNAPSHOT-jar-with-dependencies.jar lib/
+cp ../zerobus-sdk-java/target/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar lib/
 ```
 
 #### 3. Define Your Protocol Buffer Schema

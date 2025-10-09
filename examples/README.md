@@ -21,10 +21,10 @@ Demonstrates synchronous record ingestion where each record is waited for before
 
 **Run:**
 ```bash
-javac -cp "../target/zerobus-ingest-sdk-java-0.1.0-SNAPSHOT-jar-with-dependencies.jar" \
+javac -cp "../target/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar" \
   src/main/java/com/databricks/zerobus/examples/BlockingIngestionExample.java
 
-java -cp "../target/zerobus-ingest-sdk-java-0.1.0-SNAPSHOT-jar-with-dependencies.jar:src/main/java" \
+java -cp "../target/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar:src/main/java" \
   com.databricks.zerobus.examples.BlockingIngestionExample
 ```
 
@@ -47,10 +47,10 @@ Demonstrates asynchronous record ingestion for maximum throughput.
 
 **Run:**
 ```bash
-javac -cp "../target/zerobus-ingest-sdk-java-0.1.0-SNAPSHOT-jar-with-dependencies.jar" \
+javac -cp "../target/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar" \
   src/main/java/com/databricks/zerobus/examples/NonBlockingIngestionExample.java
 
-java -cp "../target/zerobus-ingest-sdk-java-0.1.0-SNAPSHOT-jar-with-dependencies.jar:src/main/java" \
+java -cp "../target/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar:src/main/java" \
   com.databricks.zerobus.examples.NonBlockingIngestionExample
 ```
 
