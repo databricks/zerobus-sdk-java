@@ -1,0 +1,2 @@
+fmt:
+	mvn spotless:apply

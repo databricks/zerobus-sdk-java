@@ -4,6 +4,7 @@ package com.databricks.zerobus;
  * Represents the lifecycle state of a ZerobusStream.
  *
  * <p>State transitions typically follow this pattern:
+ *
  * <pre>
  * UNINITIALIZED → OPENED → FLUSHING → CLOSED
  *                    ↓

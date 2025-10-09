@@ -3,9 +3,6 @@ package com.databricks.zerobus;
 import com.google.protobuf.Message;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.Iterator;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
@@ -13,6 +10,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The main entry point for the Zerobus SDK.
@@ -22,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * operations.
  *
  * <p>Example usage:
+ *
  * <pre>{@code
  * ZerobusSdk sdk = new ZerobusSdk(
  *     "server-endpoint.databricks.com",
@@ -84,8 +84,8 @@ public class ZerobusSdk {
    *
    * <p>The workspace ID is the first component of the endpoint hostname.
    *
-   * <p>Example: {@code 1234567890123456.zerobus.us-west-2.cloud.databricks.com}
-   * returns {@code 1234567890123456}
+   * <p>Example: {@code 1234567890123456.zerobus.us-west-2.cloud.databricks.com} returns {@code
+   * 1234567890123456}
    *
    * @param endpoint The server endpoint (may include protocol prefix)
    * @return The extracted workspace ID
@@ -108,25 +108,26 @@ public class ZerobusSdk {
   /**
    * Creates an executor service for stream operations.
    *
-   * <p>The executor uses daemon threads to avoid preventing JVM shutdown.
-   * Each thread is named with a unique instance ID for debugging purposes.
+   * <p>The executor uses daemon threads to avoid preventing JVM shutdown. Each thread is named with
+   * a unique instance ID for debugging purposes.
    *
    * @return A new ExecutorService configured for stream operations
    */
   private static ExecutorService createStreamExecutor() {
     long instanceId = 1000000000L + Math.abs(RANDOM.nextLong() % 9000000000L);
 
-    ThreadFactory daemonThreadFactory = new ThreadFactory() {
-      private final AtomicInteger counter = new AtomicInteger(0);
+    ThreadFactory daemonThreadFactory =
+        new ThreadFactory() {
+          private final AtomicInteger counter = new AtomicInteger(0);
 
-      @Override
-      public Thread newThread(Runnable runnable) {
-        Thread thread = new Thread(runnable);
-        thread.setDaemon(true);
-        thread.setName(THREAD_NAME_PREFIX + instanceId + "-" + counter.getAndIncrement());
-        return thread;
-      }
-    };
+          @Override
+          public Thread newThread(Runnable runnable) {
+            Thread thread = new Thread(runnable);
+            thread.setDaemon(true);
+            thread.setName(THREAD_NAME_PREFIX + instanceId + "-" + counter.getAndIncrement());
+            return thread;
+          }
+        };
 
     return Executors.newFixedThreadPool(STREAM_EXECUTOR_THREAD_POOL_SIZE, daemonThreadFactory);
   }
@@ -159,20 +160,17 @@ public class ZerobusSdk {
       logger.debug("Creating stream for table: " + tableProperties.getTableName());
 
       // Generate authentication token
-      String token = TokenFactory.getZerobusToken(
-          tableProperties.getTableName(),
-          workspaceId,
-          unityCatalogEndpoint,
-          clientId,
-          clientSecret);
+      String token =
+          TokenFactory.getZerobusToken(
+              tableProperties.getTableName(),
+              workspaceId,
+              unityCatalogEndpoint,
+              clientId,
+              clientSecret);
 
       // Create gRPC stub with authentication
       ZerobusGrpc.ZerobusStub stub =
-          stubFactory.createStub(
-              serverEndpoint,
-              true,
-              tableProperties.getTableName(),
-              token);
+          stubFactory.createStub(serverEndpoint, true, tableProperties.getTableName(), token);
 
       ZerobusStream<RecordType> stream =
           new ZerobusStream<>(
