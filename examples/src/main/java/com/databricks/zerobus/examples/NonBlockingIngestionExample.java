@@ -61,7 +61,7 @@ public class NonBlockingIngestionExample {
                 CLIENT_ID,
                 CLIENT_SECRET,
                 options
-            );
+            ).join();
             System.out.println("✓ Stream created: " + stream.getStreamId());
 
             // Step 5: Ingest records asynchronously
@@ -78,14 +78,8 @@ public class NonBlockingIngestionExample {
                         .setHumidity(50 + (i % 40))
                         .build();
 
-                    // Ingest record (non-blocking)
-                    IngestRecordResult result = stream.ingestRecord(record);
-
-                    // Wait for SDK to accept (this is fast, just queue check)
-                    result.getRecordAccepted().join();
-
-                    // Collect futures to wait for durability later
-                    futures.add(result.getWriteCompleted());
+                    // Ingest record and collect future for durability later
+                    futures.add(stream.ingestRecord(record));
 
                     // Progress indicator
                     if ((i + 1) % 10000 == 0) {

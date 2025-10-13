@@ -8,14 +8,13 @@ import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
-
 import java.util.concurrent.TimeUnit;
 
 /**
  * Factory for creating Zerobus gRPC stubs with proper configuration.
  *
- * <p>This factory handles the creation of gRPC channels and stubs with
- * appropriate settings for long-lived streaming connections.
+ * <p>This factory handles the creation of gRPC channels and stubs with appropriate settings for
+ * long-lived streaming connections.
  */
 class ZerobusSdkStubFactory {
 
@@ -34,8 +33,8 @@ class ZerobusSdkStubFactory {
   /**
    * Creates a new managed gRPC channel.
    *
-   * <p>The channel is configured for long-lived streaming with appropriate
-   * keep-alive settings and message size limits.
+   * <p>The channel is configured for long-lived streaming with appropriate keep-alive settings and
+   * message size limits.
    *
    * @param endpoint The endpoint URL (may include protocol prefix)
    * @param useTls Whether to use TLS encryption
@@ -44,8 +43,8 @@ class ZerobusSdkStubFactory {
   ManagedChannel createGrpcChannel(String endpoint, boolean useTls) {
     EndpointInfo endpointInfo = parseEndpoint(endpoint, useTls);
 
-    NettyChannelBuilder builder = NettyChannelBuilder
-        .forAddress(endpointInfo.host, endpointInfo.port);
+    NettyChannelBuilder builder =
+        NettyChannelBuilder.forAddress(endpointInfo.host, endpointInfo.port);
 
     // Configure TLS or plaintext
     if (useTls) {
@@ -66,11 +65,11 @@ class ZerobusSdkStubFactory {
   /**
    * Creates a new Zerobus gRPC stub with authentication.
    *
-   * <p>The stub is configured with an interceptor that adds authentication
-   * headers to all outgoing requests.
+   * <p>The stub is configured with an interceptor that adds authentication headers to all outgoing
+   * requests.
    *
-   * <p><b>Note:</b> Currently creates a new channel for each stub. Consider
-   * reusing channels across multiple streams for better resource utilization.
+   * <p><b>Note:</b> Currently creates a new channel for each stub. Consider reusing channels across
+   * multiple streams for better resource utilization.
    *
    * @param endpoint The endpoint URL
    * @param useTls Whether to use TLS encryption
@@ -79,10 +78,7 @@ class ZerobusSdkStubFactory {
    * @return A configured ZerobusStub
    */
   ZerobusGrpc.ZerobusStub createStub(
-      String endpoint,
-      boolean useTls,
-      String tableName,
-      String token) {
+      String endpoint, boolean useTls, String tableName, String token) {
     ManagedChannel channel = createGrpcChannel(endpoint, useTls);
     ClientInterceptor authInterceptor = new AuthenticationInterceptor(token, tableName);
     Channel interceptedChannel = io.grpc.ClientInterceptors.intercept(channel, authInterceptor);
@@ -117,16 +113,15 @@ class ZerobusSdkStubFactory {
     // Split host and port
     String[] parts = cleanEndpoint.split(":", 2);
     String host = parts[0];
-    int port = parts.length > 1
-        ? Integer.parseInt(parts[1])
-        : (useTls ? DEFAULT_TLS_PORT : DEFAULT_PLAINTEXT_PORT);
+    int port =
+        parts.length > 1
+            ? Integer.parseInt(parts[1])
+            : (useTls ? DEFAULT_TLS_PORT : DEFAULT_PLAINTEXT_PORT);
 
     return new EndpointInfo(host, port);
   }
 
-  /**
-   * Container for parsed endpoint information.
-   */
+  /** Container for parsed endpoint information. */
   private static class EndpointInfo {
     final String host;
     final int port;
@@ -142,9 +137,10 @@ class ZerobusSdkStubFactory {
  * gRPC client interceptor that adds authentication headers to requests.
  *
  * <p>This interceptor attaches the following headers to all outgoing requests:
+ *
  * <ul>
- *   <li>Authorization: Bearer token</li>
- *   <li>x-databricks-zerobus-table-name: table name</li>
+ *   <li>Authorization: Bearer token
+ *   <li>x-databricks-zerobus-table-name: table name
  * </ul>
  */
 class AuthenticationInterceptor implements ClientInterceptor {
@@ -171,9 +167,7 @@ class AuthenticationInterceptor implements ClientInterceptor {
 
   @Override
   public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
-      MethodDescriptor<ReqT, RespT> method,
-      CallOptions callOptions,
-      Channel next) {
+      MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
     return new io.grpc.ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(
         next.newCall(method, callOptions)) {
       @Override
