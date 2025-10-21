@@ -1,0 +1,48 @@
+name: Test Workflow
+
+on:
+  workflow_call:
+    inputs:
+      os:
+        required: true
+        type: string
+      javaVersion:
+        required: true
+        type: string
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+    runs-on:
+      group: databricks-protected-runner-group
+      labels: ${{ inputs.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Unshallow
+        run: git fetch --prune --unshallow
+
+      - name: Set up JDK ${{ inputs.javaVersion }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ inputs.javaVersion }}
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build with Maven
+        run: mvn clean compile
+
+      - name: Run tests
+        run: mvn test
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ inputs.os }}-java-${{ inputs.javaVersion }}
+          path: |
+            target/surefire-reports/
+            target/test-classes/
+          retention-days: 7

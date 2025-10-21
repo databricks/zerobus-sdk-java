@@ -54,6 +54,37 @@
       <artifactId>slf4j-simple</artifactId>
       <version>1.7.36</version>
     </dependency>
+    <!-- Test dependencies -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <version>5.10.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <version>5.10.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <version>5.5.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <version>5.5.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-testing</artifactId>
+      <version>1.58.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
   <build>
     <plugins>
@@ -69,9 +100,16 @@
         </configuration>
         <executions>
           <execution>
+            <id>compile-protobuf</id>
             <goals>
               <goal>compile</goal>
               <goal>compile-custom</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>test-compile-protobuf</id>
+            <goals>
+              <goal>test-compile</goal>
             </goals>
           </execution>
         </executions>
@@ -114,6 +152,12 @@
           </pom>
         </configuration>
       </plugin>
+      <!-- Maven Surefire Plugin for running tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>3.2.1</version>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
@@ -138,6 +182,7 @@
                   <manifestEntries>
                     <Implementation-Title>${project.name}</Implementation-Title>
                     <Implementation-Version>${project.version}</Implementation-Version>
+                    <Main-Class>com.databricks.zerobus.tools.GenerateProto</Main-Class>
                   </manifestEntries>
                 </transformer>
                 <!-- Handle META-INF/services for gRPC -->
