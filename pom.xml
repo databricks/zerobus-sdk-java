@@ -27,7 +27,6 @@
     <developerConnection>scm:git:ssh://github.com:databricks/zerobus-sdk-java.git</developerConnection>
     <url>https://github.com/databricks/zerobus-sdk-java/tree/main</url>
   </scm>
-
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
