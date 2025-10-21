@@ -155,7 +155,7 @@ class AuthenticationInterceptor implements ClientInterceptor {
         next.newCall(method, callOptions)) {
       @Override
       public void start(Listener<RespT> responseListener, Metadata headers) {
-        // headers.put(AUTHORIZATION_HEADER, BEARER_PREFIX + tokenSupplier.get());
+        headers.put(AUTHORIZATION_HEADER, BEARER_PREFIX + tokenSupplier.get());
         headers.put(TABLE_NAME_HEADER, tableName);
         super.start(responseListener, headers);
       }
