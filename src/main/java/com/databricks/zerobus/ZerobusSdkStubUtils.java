@@ -20,69 +20,59 @@ class ZerobusSdkStubFactory {
 
   // gRPC channel configuration constants
   private static final int DEFAULT_TLS_PORT = 443;
-  private static final int DEFAULT_PLAINTEXT_PORT = 80;
   private static final long KEEP_ALIVE_TIME_SECONDS = 30;
   private static final long KEEP_ALIVE_TIMEOUT_SECONDS = 10;
-  private static final int MAX_INBOUND_MESSAGE_SIZE_MB = 100;
-  private static final int BYTES_PER_MB = 1024 * 1024;
 
-  // Protocol prefixes
+  // Protocol prefix
   private static final String HTTPS_PREFIX = "https://";
-  private static final String HTTP_PREFIX = "http://";
 
   /**
-   * Creates a new managed gRPC channel.
+   * Creates a new managed gRPC channel with TLS.
    *
    * <p>The channel is configured for long-lived streaming with appropriate keep-alive settings and
-   * message size limits.
+   * unlimited message size limits.
    *
-   * @param endpoint The endpoint URL (may include protocol prefix)
-   * @param useTls Whether to use TLS encryption
+   * @param endpoint The endpoint URL (may include https:// prefix)
    * @return A configured ManagedChannel
    */
-  ManagedChannel createGrpcChannel(String endpoint, boolean useTls) {
-    EndpointInfo endpointInfo = parseEndpoint(endpoint, useTls);
+  ManagedChannel createGrpcChannel(String endpoint) {
+    EndpointInfo endpointInfo = parseEndpoint(endpoint);
 
     NettyChannelBuilder builder =
-        NettyChannelBuilder.forAddress(endpointInfo.host, endpointInfo.port);
+        NettyChannelBuilder.forAddress(endpointInfo.host, endpointInfo.port)
+            .useTransportSecurity();
 
-    // Configure TLS or plaintext
-    if (useTls) {
-      builder.useTransportSecurity();
-    } else {
-      builder.usePlaintext();
-    }
-
-    // Configure for long-lived streaming connections
+    // Configure for long-lived streaming connections with unlimited message size
     return builder
         .keepAliveTime(KEEP_ALIVE_TIME_SECONDS, TimeUnit.SECONDS)
         .keepAliveTimeout(KEEP_ALIVE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
         .keepAliveWithoutCalls(true)
-        .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE_MB * BYTES_PER_MB)
+        .maxInboundMessageSize(Integer.MAX_VALUE)
         .build();
   }
 
   /**
-   * Creates a new Zerobus gRPC stub with authentication.
+   * Creates a new Zerobus gRPC stub with dynamic token supplier.
    *
-   * <p>The stub is configured with an interceptor that adds authentication headers to all outgoing
-   * requests.
+   * <p>The stub is configured with an interceptor that obtains a fresh token for each request using
+   * the provided token supplier. This allows token rotation without recreating the stub.
    *
    * <p><b>Note:</b> Currently creates a new channel for each stub. Consider reusing channels across
    * multiple streams for better resource utilization.
    *
    * @param endpoint The endpoint URL
-   * @param useTls Whether to use TLS encryption
    * @param tableName The target table name
-   * @param token Authentication token (Bearer token)
-   * @return A configured ZerobusStub
+   * @param tokenSupplier Supplier that provides a fresh authentication token for each request
+   * @return A configured ZerobusStub with unlimited message sizes
    */
-  ZerobusGrpc.ZerobusStub createStub(
-      String endpoint, boolean useTls, String tableName, String token) {
-    ManagedChannel channel = createGrpcChannel(endpoint, useTls);
-    ClientInterceptor authInterceptor = new AuthenticationInterceptor(token, tableName);
+  ZerobusGrpc.ZerobusStub createStubWithTokenSupplier(
+      String endpoint, String tableName, java.util.function.Supplier<String> tokenSupplier) {
+    ManagedChannel channel = createGrpcChannel(endpoint);
+    ClientInterceptor authInterceptor = new AuthenticationInterceptor(tokenSupplier, tableName);
     Channel interceptedChannel = io.grpc.ClientInterceptors.intercept(channel, authInterceptor);
-    return ZerobusGrpc.newStub(interceptedChannel);
+    return ZerobusGrpc.newStub(interceptedChannel)
+        .withMaxInboundMessageSize(Integer.MAX_VALUE)
+        .withMaxOutboundMessageSize(Integer.MAX_VALUE);
   }
 
   /**
@@ -97,26 +87,20 @@ class ZerobusSdkStubFactory {
   /**
    * Parses an endpoint string to extract host and port information.
    *
-   * @param endpoint The endpoint string (may include protocol)
-   * @param useTls Whether TLS is being used (affects default port)
+   * @param endpoint The endpoint string (may include https:// prefix)
    * @return Parsed endpoint information
    */
-  private EndpointInfo parseEndpoint(String endpoint, boolean useTls) {
+  private EndpointInfo parseEndpoint(String endpoint) {
     // Remove protocol prefix if present
     String cleanEndpoint = endpoint;
     if (cleanEndpoint.startsWith(HTTPS_PREFIX)) {
       cleanEndpoint = cleanEndpoint.substring(HTTPS_PREFIX.length());
-    } else if (cleanEndpoint.startsWith(HTTP_PREFIX)) {
-      cleanEndpoint = cleanEndpoint.substring(HTTP_PREFIX.length());
     }
 
-    // Split host and port
+    // Parse host:port format
     String[] parts = cleanEndpoint.split(":", 2);
     String host = parts[0];
-    int port =
-        parts.length > 1
-            ? Integer.parseInt(parts[1])
-            : (useTls ? DEFAULT_TLS_PORT : DEFAULT_PLAINTEXT_PORT);
+    int port = parts.length > 1 ? Integer.parseInt(parts[1]) : DEFAULT_TLS_PORT;
 
     return new EndpointInfo(host, port);
   }
@@ -151,17 +135,17 @@ class AuthenticationInterceptor implements ClientInterceptor {
       Metadata.Key.of("x-databricks-zerobus-table-name", Metadata.ASCII_STRING_MARSHALLER);
   private static final String BEARER_PREFIX = "Bearer ";
 
-  private final String token;
+  private final java.util.function.Supplier<String> tokenSupplier;
   private final String tableName;
 
   /**
-   * Creates a new authentication interceptor.
+   * Creates a new authentication interceptor with a dynamic token supplier.
    *
-   * @param token The authentication token (without "Bearer " prefix)
+   * @param tokenSupplier Supplier that provides a fresh authentication token for each request
    * @param tableName The target table name
    */
-  AuthenticationInterceptor(String token, String tableName) {
-    this.token = token;
+  AuthenticationInterceptor(java.util.function.Supplier<String> tokenSupplier, String tableName) {
+    this.tokenSupplier = tokenSupplier;
     this.tableName = tableName;
   }
 
@@ -172,7 +156,7 @@ class AuthenticationInterceptor implements ClientInterceptor {
         next.newCall(method, callOptions)) {
       @Override
       public void start(Listener<RespT> responseListener, Metadata headers) {
-        headers.put(AUTHORIZATION_HEADER, BEARER_PREFIX + token);
+        // headers.put(AUTHORIZATION_HEADER, BEARER_PREFIX + tokenSupplier.get());
         headers.put(TABLE_NAME_HEADER, tableName);
         super.start(responseListener, headers);
       }

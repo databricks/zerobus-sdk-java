@@ -159,18 +159,25 @@ public class ZerobusSdk {
     try {
       logger.debug("Creating stream for table: " + tableProperties.getTableName());
 
-      // Generate authentication token
-      String token =
-          TokenFactory.getZerobusToken(
-              tableProperties.getTableName(),
-              workspaceId,
-              unityCatalogEndpoint,
-              clientId,
-              clientSecret);
+      // Create a token supplier that generates a fresh token for each gRPC request
+      java.util.function.Supplier<String> tokenSupplier =
+          () -> {
+            try {
+              return TokenFactory.getZerobusToken(
+                  tableProperties.getTableName(),
+                  workspaceId,
+                  unityCatalogEndpoint,
+                  clientId,
+                  clientSecret);
+            } catch (NonRetriableException e) {
+              throw new RuntimeException("Failed to get Zerobus token", e);
+            }
+          };
 
-      // Create gRPC stub with authentication
+      // Create gRPC stub once with token supplier - it will fetch fresh tokens as needed
       ZerobusGrpc.ZerobusStub stub =
-          stubFactory.createStub(serverEndpoint, true, tableProperties.getTableName(), token);
+          stubFactory.createStubWithTokenSupplier(
+              serverEndpoint, tableProperties.getTableName(), tokenSupplier);
 
       ZerobusStream<RecordType> stream =
           new ZerobusStream<>(
