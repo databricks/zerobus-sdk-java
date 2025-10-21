@@ -9,7 +9,6 @@
   <name>Zerobus Ingest SDK for Java</name>
   <description>Databricks Zerobus Ingest SDK for Java - Direct ingestion to Delta tables</description>
   <url>https://github.com/databricks/zerobus-sdk-java</url>
-
   <licenses>
     <license>
       <name>Databricks License</name>
@@ -17,20 +16,27 @@
       <distribution>repo</distribution>
     </license>
   </licenses>
-
   <developers>
     <developer>
       <organization>Databricks</organization>
       <organizationUrl>https://databricks.com</organizationUrl>
     </developer>
   </developers>
-
   <scm>
     <connection>scm:git:git://github.com/databricks/zerobus-sdk-java.git</connection>
     <developerConnection>scm:git:ssh://github.com:databricks/zerobus-sdk-java.git</developerConnection>
     <url>https://github.com/databricks/zerobus-sdk-java/tree/main</url>
   </scm>
-
+  <distributionManagement>
+    <repository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+    </repository>
+    <snapshotRepository>
+      <id>ossrh</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </snapshotRepository>
+  </distributionManagement>
   <properties>
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
@@ -266,10 +272,10 @@
         <executions>
           <execution>
             <id>sign-artifacts</id>
-            <phase>verify</phase>
             <goals>
               <goal>sign</goal>
             </goals>
+            <phase>verify</phase>
             <configuration>
               <gpgArguments>
                 <arg>--pinentry-mode</arg>
@@ -300,15 +306,4 @@
       </extension>
     </extensions>
   </build>
-
-  <distributionManagement>
-    <snapshotRepository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-    </snapshotRepository>
-    <repository>
-      <id>ossrh</id>
-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-    </repository>
-  </distributionManagement>
 </project>
