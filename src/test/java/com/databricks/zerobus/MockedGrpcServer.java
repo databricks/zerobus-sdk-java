@@ -27,7 +27,13 @@ public class MockedGrpcServer {
     final boolean writeFailure;
     final boolean closeStreamSignal;
 
-    AckRecord(boolean success, long offsetId, long delayMs, Throwable error, boolean writeFailure, boolean closeStreamSignal) {
+    AckRecord(
+        boolean success,
+        long offsetId,
+        long delayMs,
+        Throwable error,
+        boolean writeFailure,
+        boolean closeStreamSignal) {
       this.success = success;
       this.offsetId = offsetId;
       this.delayMs = delayMs;
@@ -153,7 +159,14 @@ public class MockedGrpcServer {
 
   /** Inject a write failure for a specific record offset. */
   public void injectWriteFailureOfRecords(long offsetId, long delayMs) {
-    injectedAckRecords.add(new AckRecord(false, offsetId, delayMs, new RuntimeException("IngestRecord write failure"), true, false));
+    injectedAckRecords.add(
+        new AckRecord(
+            false,
+            offsetId,
+            delayMs,
+            new RuntimeException("IngestRecord write failure"),
+            true,
+            false));
   }
 
   /** Inject a write failure for a specific record offset. */
@@ -163,10 +176,11 @@ public class MockedGrpcServer {
 
   /** Inject a non-retriable error for a specific record offset. */
   public void injectNonRetriableError(long offsetId, long delayMs) {
-    io.grpc.StatusRuntimeException nonRetriableError = new io.grpc.StatusRuntimeException(
-      io.grpc.Status.UNAUTHENTICATED.withDescription("Non-retriable gRPC error")
-    );
-    injectedAckRecords.add(new AckRecord(false, offsetId, delayMs, nonRetriableError, false, false));
+    io.grpc.StatusRuntimeException nonRetriableError =
+        new io.grpc.StatusRuntimeException(
+            io.grpc.Status.UNAUTHENTICATED.withDescription("Non-retriable gRPC error"));
+    injectedAckRecords.add(
+        new AckRecord(false, offsetId, delayMs, nonRetriableError, false, false));
   }
 
   /** Inject a non-retriable error for a specific record offset. */
@@ -354,7 +368,9 @@ public class MockedGrpcServer {
           sendAck(offset);
         } else {
           Throwable error =
-              matchingRecord.error != null ? matchingRecord.error : new RuntimeException("Ingest failed");
+              matchingRecord.error != null
+                  ? matchingRecord.error
+                  : new RuntimeException("Ingest failed");
           sendError(error);
         }
       }

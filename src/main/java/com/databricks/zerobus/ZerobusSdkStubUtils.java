@@ -39,8 +39,7 @@ class ZerobusSdkStubFactory {
     EndpointInfo endpointInfo = parseEndpoint(endpoint);
 
     NettyChannelBuilder builder =
-        NettyChannelBuilder.forAddress(endpointInfo.host, endpointInfo.port)
-            .useTransportSecurity();
+        NettyChannelBuilder.forAddress(endpointInfo.host, endpointInfo.port).useTransportSecurity();
 
     // Configure for long-lived streaming connections with unlimited message size
     return builder

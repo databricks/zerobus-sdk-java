@@ -25,12 +25,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * <p>These tests verify the SDK's core functionality including stream creation, record ingestion,
  * acknowledgments, and flush operations without requiring a real Zerobus backend server.
  *
- * <p>Best practices followed:
- * - Fast execution (no long sleeps or timeouts)
- * - Clear test names describing what is being tested
- * - Proper mock setup and teardown
- * - Testing both success and failure paths
- * - Using CompletableFutures for async operations
+ * <p>Best practices followed: - Fast execution (no long sleeps or timeouts) - Clear test names
+ * describing what is being tested - Proper mock setup and teardown - Testing both success and
+ * failure paths - Using CompletableFutures for async operations
  */
 @ExtendWith(MockitoExtension.class)
 public class ZerobusSdkTest {
@@ -55,7 +52,10 @@ public class ZerobusSdkTest {
     // Mock TokenFactory to return a fake token
     tokenFactoryMock = mockStatic(TokenFactory.class);
     tokenFactoryMock
-        .when(() -> TokenFactory.getZerobusToken(anyString(), anyString(), anyString(), anyString(), anyString()))
+        .when(
+            () ->
+                TokenFactory.getZerobusToken(
+                    anyString(), anyString(), anyString(), anyString(), anyString()))
         .thenReturn("fake-token-for-testing");
 
     // Create ZerobusSdk and set mocked stub factory
@@ -247,10 +247,7 @@ public class ZerobusSdkTest {
     TableProperties<CityPopulationTableRow> tableProperties =
         new TableProperties<>("test-table", CityPopulationTableRow.getDefaultInstance());
     StreamConfigurationOptions options =
-        StreamConfigurationOptions.builder()
-            .setRecovery(false)
-            .setAckCallback(ackCallback)
-            .build();
+        StreamConfigurationOptions.builder().setRecovery(false).setAckCallback(ackCallback).build();
 
     ZerobusStream<CityPopulationTableRow> stream =
         zerobusSdk.createStream(tableProperties, "client-id", "client-secret", options).get();
@@ -286,7 +283,8 @@ public class ZerobusSdkTest {
 
     // Verify the last acked offset includes all records
     long lastAckedOffset = ackedOffsets.get(ackedOffsets.size() - 1);
-    assertEquals(numRecords - 1, lastAckedOffset, "Expected last acked offset to be " + (numRecords - 1));
+    assertEquals(
+        numRecords - 1, lastAckedOffset, "Expected last acked offset to be " + (numRecords - 1));
 
     // Verify unacked records are empty
     Iterator<CityPopulationTableRow> unackedRecords = stream.getUnackedRecords();
@@ -324,15 +322,10 @@ public class ZerobusSdkTest {
     TableProperties<CityPopulationTableRow> tableProperties =
         new TableProperties<>("test-table", CityPopulationTableRow.getDefaultInstance());
     StreamConfigurationOptions options =
-        StreamConfigurationOptions.builder()
-            .setRecovery(false)
-            .setAckCallback(ackCallback)
-            .build();
+        StreamConfigurationOptions.builder().setRecovery(false).setAckCallback(ackCallback).build();
 
     ZerobusStream<CityPopulationTableRow> stream =
-        zerobusSdk
-            .createStream(tableProperties, "client-id", "client-secret", options)
-            .get();
+        zerobusSdk.createStream(tableProperties, "client-id", "client-secret", options).get();
 
     assertEquals(StreamState.OPENED, stream.getState());
 
