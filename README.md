@@ -1,6 +1,30 @@
 # Databricks Zerobus Ingest SDK for Java
 
-The Databricks Zerobus Ingest SDK for Java provides a high-performance client for ingesting data directly into Databricks Delta tables using the Zerobus streaming protocol.
+[Public Preview](https://docs.databricks.com/release-notes/release-types.html): This SDK is supported for production use cases and is available to all customers. Databricks is actively working on stabilizing the Zerobus Ingest SDK for Java. Minor version updates may include backwards-incompatible changes.
+
+We are keen to hear feedback from you on this SDK. Please [file issues](https://github.com/databricks/zerobus-sdk-java/issues), and we will address them.
+
+The Databricks Zerobus Ingest SDK for Java provides a high-performance client for ingesting data directly into Databricks Delta tables using the Zerobus streaming protocol. | See also the [SDK for Rust](https://github.com/databricks/zerobus-sdk-rs) | See also the [SDK for Python](https://github.com/databricks/zerobus-sdk-py)
+
+## Table of Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Quick Start User Guide](#quick-start-user-guide)
+  - [Prerequisites](#prerequisites)
+  - [Building Your Application](#building-your-application)
+  - [Define Your Protocol Buffer Schema](#define-your-protocol-buffer-schema)
+  - [Generate Protocol Buffer Schema from Unity Catalog (Alternative)](#generate-protocol-buffer-schema-from-unity-catalog-alternative)
+  - [Write Your Client Code](#write-your-client-code)
+  - [Compile and Run](#compile-and-run)
+- [Usage Examples](#usage-examples)
+  - [Blocking Ingestion](#blocking-ingestion)
+  - [Non-Blocking Ingestion](#non-blocking-ingestion)
+- [Configuration](#configuration)
+- [Logging](#logging)
+- [Error Handling](#error-handling)
+- [API Reference](#api-reference)
+- [Best Practices](#best-practices)
 
 ## Features
 
@@ -21,7 +45,6 @@ The Databricks Zerobus Ingest SDK for Java provides a high-performance client fo
 
 **When using the fat JAR** (recommended for most users):
 - No additional dependencies required - all dependencies are bundled
-- Includes `slf4j-simple` for logging out of the box
 
 **When using the regular JAR**:
 - [`protobuf-java` 3.24.0](https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java/3.24.0)
@@ -30,7 +53,7 @@ The Databricks Zerobus Ingest SDK for Java provides a high-performance client fo
 - [`grpc-stub` 1.58.0](https://mvnrepository.com/artifact/io.grpc/grpc-stub/1.58.0)
 - [`javax.annotation-api` 1.3.2](https://mvnrepository.com/artifact/javax.annotation/javax.annotation-api/1.3.2)
 - [`slf4j-api` 1.7.36](https://mvnrepository.com/artifact/org.slf4j/slf4j-api/1.7.36)
-- [`slf4j-simple` 1.7.36](https://mvnrepository.com/artifact/org.slf4j/slf4j-simple/1.7.36) (or substitute your own SLF4J implementation like [`logback-classic` 1.2.11](https://mvnrepository.com/artifact/ch.qos.logback/logback-classic/1.2.11))
+- An SLF4J implementation such as [`slf4j-simple` 1.7.36](https://mvnrepository.com/artifact/org.slf4j/slf4j-simple/1.7.36) or [`logback-classic` 1.2.11](https://mvnrepository.com/artifact/ch.qos.logback/logback-classic/1.2.11)
 
 ### Build Requirements (only for building from source)
 
@@ -176,13 +199,102 @@ message AirQuality {
 }
 ```
 
-Compile the protobuf:
+**Compile the protobuf:**
 
 ```bash
 protoc --java_out=src/main/java src/main/proto/record.proto
 ```
 
 This generates `src/main/java/com/example/proto/Record.java`.
+
+### Generate Protocol Buffer Schema from Unity Catalog (Alternative)
+
+Instead of manually writing and compiling your protobuf schema, you can automatically generate it from an existing Unity Catalog table schema using the included `GenerateProto` tool.
+
+#### Using the Proto Generation Tool
+
+The `GenerateProto` tool fetches your table schema from Unity Catalog and generates a corresponding proto2 definition file with the correct type mappings.
+
+**Basic Usage:**
+
+```bash
+java -jar lib/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar \
+  --uc-endpoint "https://dbc-a1b2c3d4-e5f6.cloud.databricks.com" \
+  --client-id "your-service-principal-application-id" \
+  --client-secret "your-service-principal-secret" \
+  --table "main.default.air_quality" \
+  --output "src/main/proto/record.proto" \
+  --proto-msg "AirQuality"
+```
+
+**Parameters:**
+- `--uc-endpoint`: Your workspace URL (e.g., `https://dbc-a1b2c3d4-e5f6.cloud.databricks.com`)
+- `--client-id`: Service principal application ID
+- `--client-secret`: Service principal secret
+- `--table`: Fully qualified table name (catalog.schema.table)
+- `--output`: Output path for the generated proto file
+- `--proto-msg`: (Optional) Name for the protobuf message (defaults to table name)
+
+**Example:**
+
+For a table defined as:
+```sql
+CREATE TABLE main.default.air_quality (
+    device_name STRING,
+    temp INT,
+    humidity BIGINT
+)
+USING DELTA;
+```
+
+Running the generation tool will create `src/main/proto/record.proto`:
+```protobuf
+syntax = "proto2";
+
+package com.example;
+
+option java_package = "com.example.proto";
+option java_outer_classname = "Record";
+
+message AirQuality {
+    optional string device_name = 1;
+    optional int32 temp = 2;
+    optional int64 humidity = 3;
+}
+```
+
+After generating the proto file, compile it as shown above:
+```bash
+protoc --java_out=src/main/java src/main/proto/record.proto
+```
+
+**Type Mappings:**
+
+The tool automatically maps Unity Catalog types to proto2 types:
+
+| Delta Type | Proto2 Type |
+|-----------|-------------|
+| INT, SMALLINT, SHORT | int32 |
+| BIGINT, LONG | int64 |
+| FLOAT | float |
+| DOUBLE | double |
+| STRING, VARCHAR | string |
+| BOOLEAN | bool |
+| BINARY | bytes |
+| DATE | int32 |
+| TIMESTAMP | int64 |
+| ARRAY\<type\> | repeated type |
+| MAP\<key, value\> | map\<key, value\> |
+| STRUCT\<fields\> | nested message |
+
+**Benefits:**
+- No manual schema creation required
+- Ensures schema consistency between your table and protobuf definitions
+- Automatically handles complex types (arrays, maps, structs)
+- Reduces errors from manual type mapping
+- No need to clone the repository - runs directly from the SDK JAR
+
+For detailed documentation and examples, see [tools/README.md](tools/README.md).
 
 #### 4. Write Your Client Code
 
@@ -353,24 +465,40 @@ try {
 
 ## Logging
 
-The Databricks Zerobus Ingest SDK for Java uses the standard [SLF4J logging framework](https://www.slf4j.org/) and includes `slf4j-simple` by default, so **logging works out of the box** with no additional configuration required.
+The Databricks Zerobus Ingest SDK for Java uses the standard [SLF4J logging framework](https://www.slf4j.org/). The SDK only depends on `slf4j-api`, which means **you need to add an SLF4J implementation** to your classpath to see log output.
 
-### Controlling Log Levels
+### Adding a Logging Implementation
 
-By default, the SDK logs at **INFO** level. To enable debug logging, set the system property when running your application:
+**Option 1: Using slf4j-simple** (simplest for getting started)
 
+Add to your Maven dependencies:
+```xml
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-simple</artifactId>
+    <version>1.7.36</version>
+</dependency>
+```
+
+Control log levels with system properties:
 ```bash
 java -Dorg.slf4j.simpleLogger.log.com.databricks.zerobus=debug -cp "lib/*:out" com.example.ZerobusClient
 ```
 
 Available log levels: `trace`, `debug`, `info`, `warn`, `error`
 
-### Using a Different Logging Framework
+**Option 2: Using Logback** (recommended for production)
 
-If you prefer a different logging framework like **Logback** or **Log4j**, you can substitute `slf4j-simple`:
+Add to your Maven dependencies:
+```xml
+<dependency>
+    <groupId>ch.qos.logback</groupId>
+    <artifactId>logback-classic</artifactId>
+    <version>1.2.11</version>
+</dependency>
+```
 
-**With Logback**, add the following to your `logback.xml`:
-
+Create `logback.xml` in your resources directory:
 ```xml
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
@@ -387,13 +515,43 @@ If you prefer a different logging framework like **Logback** or **Log4j**, you c
 </configuration>
 ```
 
-**With Log4j**, add to your `log4j.properties`:
+**Option 3: Using Log4j 2**
 
-```properties
-log4j.logger.com.databricks.zerobus=DEBUG
+Add to your Maven dependencies:
+```xml
+<dependency>
+    <groupId>org.apache.logging.log4j</groupId>
+    <artifactId>log4j-slf4j-impl</artifactId>
+    <version>2.20.0</version>
+</dependency>
 ```
 
-To use a different logging framework, exclude `slf4j-simple` and add your preferred implementation to the classpath.
+Create `log4j2.xml` in your resources directory:
+```xml
+<Configuration>
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger name="com.databricks.zerobus" level="debug"/>
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
+```
+
+### No Logging Implementation
+
+If you don't add an SLF4J implementation, you'll see a warning like:
+```
+SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+```
+
+The SDK will still work, but no log messages will be output.
 
 ### What Gets Logged
 
@@ -676,7 +834,4 @@ NonRetriableException(String message, Throwable cause)
 4. **Error handling**: Implement proper retry logic for retriable errors
 5. **Monitoring**: Use `ackCallback` to track ingestion progress
 6. **Token refresh**: Tokens are automatically refreshed on stream creation and recovery
-
-## Disclaimer
-
-Databricks is actively working on stabilizing the Zerobus Ingest SDK for Java. Minor version updates may include backwards-incompatible changes.
+7. **Proto generation**: Use the built-in `GenerateProto` tool to automatically generate proto files from your table schemas

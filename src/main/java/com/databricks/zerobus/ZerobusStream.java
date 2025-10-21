@@ -352,28 +352,10 @@ public class ZerobusStream<RecordType extends Message> {
             () -> {
               CompletableFuture<Void> createStreamTry = new CompletableFuture<>();
 
-              // Generate a fresh token for this stream creation attempt
-              try {
-                String token =
-                    TokenFactory.getZerobusToken(
-                        tableProperties.getTableName(),
-                        workspaceId,
-                        unityCatalogEndpoint,
-                        clientId,
-                        clientSecret);
+              // The stub was created once with a token supplier, so we don't recreate it here
+              // The token supplier will provide a fresh token for each gRPC request
 
-                // Create a new stub with the fresh token
-                stub =
-                    stubFactory.createStub(
-                        serverEndpoint, true, tableProperties.getTableName(), token);
-
-                logger.debug("Generated new token and created stub for stream");
-              } catch (NonRetriableException e) {
-                createStreamTry.completeExceptionally(e);
-                return createStreamTry;
-              }
-
-              // Create the gRPC stream with the new stub
+              // Create the gRPC stream with the existing stub
               streamCreatedEvent = Optional.of(new CompletableFuture<>());
               stream =
                   Optional.of(
