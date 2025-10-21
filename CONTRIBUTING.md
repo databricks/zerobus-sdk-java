@@ -1,6 +1,6 @@
-# Contributing to Zerobus SDK for Python
+# Contributing to Zerobus SDK for Java
 
-We happily welcome contributions to the Zerobus SDK for Python. We use [GitHub Issues](https://github.com/databricks/zerobus-sdk-py/issues) to track community reported issues and [GitHub Pull Requests](https://github.com/databricks/zerobus-sdk-py/pulls) for accepting changes.
+We happily welcome contributions to the Zerobus SDK for Java. We use [GitHub Issues](https://github.com/databricks/zerobus-sdk-java/issues) to track community reported issues and [GitHub Pull Requests](https://github.com/databricks/zerobus-sdk-java/pulls) for accepting changes.
 
 Contributions are licensed on a license-in/license-out basis.
 
@@ -20,60 +20,59 @@ Small patches and bug fixes don't need prior communication.
 
 ### Prerequisites
 
-- Python 3.7 or higher
+- **Java**: 8 or higher - [Download Java](https://adoptium.net/)
+- **Maven**: 3.6 or higher - [Download Maven](https://maven.apache.org/download.cgi)
+- **Protocol Buffers Compiler** (`protoc`): 24.4 - [Download protoc](https://github.com/protocolbuffers/protobuf/releases/tag/v24.4)
 - Git
-- pip
 
 ### Setting Up Your Development Environment
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/databricks/zerobus-sdk-py.git
-   cd zerobus-sdk-py
+   git clone https://github.com/databricks/zerobus-sdk-java.git
+   cd zerobus-sdk-java
    ```
 
-2. **Create and activate a virtual environment:**
+2. **Build the project:**
    ```bash
-   make dev
+   mvn clean install
    ```
 
    This will:
-   - Create a virtual environment in `.venv`
-   - Install the package in development mode with all dev dependencies
+   - Generate protobuf Java classes
+   - Compile the source code
+   - Run tests
+   - Install the artifact to your local Maven repository
 
-3. **Activate the virtual environment:**
+3. **Run tests:**
    ```bash
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   mvn test
    ```
 
 ## Coding Style
 
-Code style is enforced by a formatter check in your pull request. We use [Black](https://github.com/psf/black) to format our code. Run `make fmt` to ensure your code is properly formatted prior to raising a pull request.
+Code style is enforced by [Spotless](https://github.com/diffplug/spotless) in your pull request. We use Google Java Format for code formatting.
 
 ### Running the Formatter
 
 Format your code before committing:
 
 ```bash
-make fmt
+mvn spotless:apply
 ```
 
-This runs:
-- **Black**: Code formatting
-- **autoflake**: Remove unused imports
-- **isort**: Sort imports
+This will format:
+- **Java code**: Using Google Java Format
+- **Imports**: Organized and unused imports removed
+- **pom.xml**: Sorted dependencies and plugins
 
-### Running Linters
+### Checking Formatting
 
-Check your code for issues:
+Check if your code is properly formatted:
 
 ```bash
-make lint
+mvn spotless:check
 ```
-
-This runs:
-- **pycodestyle**: Style guide enforcement
-- **autoflake**: Check for unused imports
 
 ## Pull Request Process
 
@@ -85,25 +84,33 @@ This runs:
 2. **Make your changes:**
    - Write clear, concise commit messages
    - Follow existing code style
+   - Add tests for new functionality
    - Update documentation as needed
 
 3. **Format your code:**
    ```bash
-   make fmt
+   mvn spotless:apply
    ```
 
-4. **Commit your changes:**
+4. **Run tests:**
+   ```bash
+   mvn test
+   ```
+
+5. **Commit your changes:**
    ```bash
    git add .
-   git commit -m "Add feature: description of your changes"
+   git commit -s -m "Add feature: description of your changes"
    ```
 
-5. **Push to your fork:**
+   Note: The `-s` flag signs your commit (required - see below).
+
+6. **Push to your fork:**
    ```bash
    git push origin feature/your-feature-name
    ```
 
-6. **Create a Pull Request:**
+7. **Create a Pull Request:**
    - Provide a clear description of changes
    - Reference any related issues
    - Ensure all CI checks pass
@@ -130,10 +137,11 @@ git commit -s -m "Your commit message"
 
 When reviewing code:
 
-- Check for adherence to code style
+- Check for adherence to code style (Google Java Format)
 - Look for potential edge cases
 - Consider performance implications
 - Ensure documentation is updated
+- Verify tests cover new functionality
 
 ## Commit Message Guidelines
 
@@ -148,8 +156,8 @@ Example:
 ```
 Add async stream creation example
 
-- Add async_example.py demonstrating non-blocking ingestion
-- Update README with async API documentation
+- Add BlockingIngestionExample.java demonstrating synchronous ingestion
+- Update README with blocking API documentation
 
 Fixes #42
 ```
@@ -158,58 +166,109 @@ Fixes #42
 
 ### Updating Documentation
 
-- Update docstrings for all public APIs
-- Use Google-style docstrings
-- Include examples in docstrings where helpful
+- Add Javadoc for all public APIs
+- Use standard Javadoc format
+- Include `@param`, `@return`, `@throws` tags
 - Update README.md for user-facing changes
 - Update examples/ for new features
 
-Example docstring:
-```python
-def ingest_record(self, record) -> RecordAcknowledgment:
-    """
-    Submits a single record for ingestion into the stream.
+Example Javadoc:
+```java
+/**
+ * Ingests a single record into the stream.
+ *
+ * <p>Returns a CompletableFuture that completes when the record is durably written to storage.
+ * This method may block if the maximum number of in-flight records has been reached.
+ *
+ * @param record The protobuf message to ingest
+ * @return A CompletableFuture that completes when the record is acknowledged
+ * @throws ZerobusException if the stream is not in a valid state for ingestion
+ */
+public CompletableFuture<Void> ingestRecord(RecordType record) throws ZerobusException {
+    // ...
+}
+```
 
-    This method may block if the maximum number of in-flight records
-    has been reached.
+## Testing
 
-    Args:
-        record: The Protobuf message object to be ingested.
+### Writing Tests
 
-    Returns:
-        RecordAcknowledgment: An object to wait on for the server's acknowledgment.
+- Add unit tests for all new functionality
+- Use JUnit 5 for test framework
+- Use Mockito for mocking
+- Tests should be fast (< 1 second per test)
+- Use descriptive test names
 
-    Raises:
-        ZerobusException: If the stream is not in a valid state for ingestion.
+Example test:
+```java
+@Test
+public void testSingleRecordIngestAndAcknowledgment() throws Exception {
+    // Given
+    ZerobusStream<TestMessage> stream = createTestStream();
 
-    Example:
-        >>> record = AirQuality(device_name="sensor-1", temp=25)
-        >>> ack = stream.ingest_record(record)
-        >>> ack.wait_for_ack()
-    """
+    // When
+    CompletableFuture<Void> result = stream.ingestRecord(testMessage);
+
+    // Then
+    result.get(5, TimeUnit.SECONDS);
+    assertEquals(StreamState.OPENED, stream.getState());
+}
+```
+
+### Running Tests
+
+```bash
+# Run all tests
+mvn test
+
+# Run specific test class
+mvn test -Dtest=ZerobusSdkTest
+
+# Run specific test method
+mvn test -Dtest=ZerobusSdkTest#testSingleRecordIngestAndAcknowledgment
 ```
 
 ## Continuous Integration
 
 All pull requests must pass CI checks:
 
-- **fmt**: Runs formatting checks (black, autoflake, isort)
+- **Build**: `mvn clean compile`
+- **Tests**: `mvn test` (on Java 11, 17, 21)
+- **Formatting**: `mvn spotless:check`
 
-The formatting check runs `make dev fmt` and then checks for any git differences. If there are differences, the check will fail.
+Tests run on both Ubuntu and Windows runners.
 
 You can view CI results in the GitHub Actions tab of the pull request.
 
-## Makefile Targets
+## Maven Commands
 
-Available make targets:
+Useful Maven commands:
 
-- `make dev` - Set up development environment
-- `make install` - Install package
-- `make build` - Build wheel package
-- `make fmt` - Format code with black, autoflake, and isort
-- `make lint` - Run linting with pycodestyle
-- `make clean` - Remove build artifacts
-- `make help` - Show available targets
+```bash
+# Clean build
+mvn clean
+
+# Compile code
+mvn compile
+
+# Run tests
+mvn test
+
+# Format code
+mvn spotless:apply
+
+# Check formatting
+mvn spotless:check
+
+# Create JARs (regular + fat JAR)
+mvn package
+
+# Install to local Maven repo
+mvn install
+
+# Generate protobuf classes
+mvn protobuf:compile
+```
 
 ## Versioning
 
@@ -227,11 +286,13 @@ We follow [Semantic Versioning](https://semver.org/):
 
 ## Package Name
 
-The package is published on PyPI as `databricks-zerobus-ingest-sdk`.
+The package is published on Maven Central as:
+- **Group ID**: `com.databricks`
+- **Artifact ID**: `zerobus-ingest-sdk`
 
 ## Code of Conduct
 
 - Be respectful and inclusive
 - Welcome newcomers
 - Focus on constructive feedback
-- Follow the [Python Community Code of Conduct](https://www.python.org/psf/conduct/)
+- Follow professional open source etiquette
