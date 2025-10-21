@@ -45,7 +45,6 @@ The Databricks Zerobus Ingest SDK for Java provides a high-performance client fo
 
 **When using the fat JAR** (recommended for most users):
 - No additional dependencies required - all dependencies are bundled
-- Includes `slf4j-simple` for logging out of the box
 
 **When using the regular JAR**:
 - [`protobuf-java` 3.24.0](https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java/3.24.0)
@@ -54,7 +53,7 @@ The Databricks Zerobus Ingest SDK for Java provides a high-performance client fo
 - [`grpc-stub` 1.58.0](https://mvnrepository.com/artifact/io.grpc/grpc-stub/1.58.0)
 - [`javax.annotation-api` 1.3.2](https://mvnrepository.com/artifact/javax.annotation/javax.annotation-api/1.3.2)
 - [`slf4j-api` 1.7.36](https://mvnrepository.com/artifact/org.slf4j/slf4j-api/1.7.36)
-- [`slf4j-simple` 1.7.36](https://mvnrepository.com/artifact/org.slf4j/slf4j-simple/1.7.36) (or substitute your own SLF4J implementation like [`logback-classic` 1.2.11](https://mvnrepository.com/artifact/ch.qos.logback/logback-classic/1.2.11))
+- An SLF4J implementation such as [`slf4j-simple` 1.7.36](https://mvnrepository.com/artifact/org.slf4j/slf4j-simple/1.7.36) or [`logback-classic` 1.2.11](https://mvnrepository.com/artifact/ch.qos.logback/logback-classic/1.2.11)
 
 ### Build Requirements (only for building from source)
 
@@ -466,24 +465,40 @@ try {
 
 ## Logging
 
-The Databricks Zerobus Ingest SDK for Java uses the standard [SLF4J logging framework](https://www.slf4j.org/) and includes `slf4j-simple` by default, so **logging works out of the box** with no additional configuration required.
+The Databricks Zerobus Ingest SDK for Java uses the standard [SLF4J logging framework](https://www.slf4j.org/). The SDK only depends on `slf4j-api`, which means **you need to add an SLF4J implementation** to your classpath to see log output.
 
-### Controlling Log Levels
+### Adding a Logging Implementation
 
-By default, the SDK logs at **INFO** level. To enable debug logging, set the system property when running your application:
+**Option 1: Using slf4j-simple** (simplest for getting started)
 
+Add to your Maven dependencies:
+```xml
+<dependency>
+    <groupId>org.slf4j</groupId>
+    <artifactId>slf4j-simple</artifactId>
+    <version>1.7.36</version>
+</dependency>
+```
+
+Control log levels with system properties:
 ```bash
 java -Dorg.slf4j.simpleLogger.log.com.databricks.zerobus=debug -cp "lib/*:out" com.example.ZerobusClient
 ```
 
 Available log levels: `trace`, `debug`, `info`, `warn`, `error`
 
-### Using a Different Logging Framework
+**Option 2: Using Logback** (recommended for production)
 
-If you prefer a different logging framework like **Logback** or **Log4j**, you can substitute `slf4j-simple`:
+Add to your Maven dependencies:
+```xml
+<dependency>
+    <groupId>ch.qos.logback</groupId>
+    <artifactId>logback-classic</artifactId>
+    <version>1.2.11</version>
+</dependency>
+```
 
-**With Logback**, add the following to your `logback.xml`:
-
+Create `logback.xml` in your resources directory:
 ```xml
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
@@ -500,13 +515,43 @@ If you prefer a different logging framework like **Logback** or **Log4j**, you c
 </configuration>
 ```
 
-**With Log4j**, add to your `log4j.properties`:
+**Option 3: Using Log4j 2**
 
-```properties
-log4j.logger.com.databricks.zerobus=DEBUG
+Add to your Maven dependencies:
+```xml
+<dependency>
+    <groupId>org.apache.logging.log4j</groupId>
+    <artifactId>log4j-slf4j-impl</artifactId>
+    <version>2.20.0</version>
+</dependency>
 ```
 
-To use a different logging framework, exclude `slf4j-simple` and add your preferred implementation to the classpath.
+Create `log4j2.xml` in your resources directory:
+```xml
+<Configuration>
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n"/>
+        </Console>
+    </Appenders>
+    <Loggers>
+        <Logger name="com.databricks.zerobus" level="debug"/>
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+        </Root>
+    </Loggers>
+</Configuration>
+```
+
+### No Logging Implementation
+
+If you don't add an SLF4J implementation, you'll see a warning like:
+```
+SLF4J: Failed to load class "org.slf4j.impl.StaticLoggerBinder".
+SLF4J: Defaulting to no-operation (NOP) logger implementation
+```
+
+The SDK will still work, but no log messages will be output.
 
 ### What Gets Logged
 
