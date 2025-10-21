@@ -123,7 +123,58 @@ GRANT SELECT, MODIFY ON TABLE <catalog_name>.default.air_quality TO `<service-pr
 
 ### Building Your Application
 
-#### 1. Build the SDK from Source
+#### Option 1: Using Maven Central (Recommended)
+
+**Regular JAR (with dependency management):**
+
+Add the SDK as a dependency in your `pom.xml`:
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>com.databricks</groupId>
+        <artifactId>zerobus-ingest-sdk</artifactId>
+        <version>0.1.0</version>
+    </dependency>
+</dependencies>
+```
+
+Or with Gradle (`build.gradle`):
+
+```groovy
+dependencies {
+    implementation 'com.databricks:zerobus-ingest-sdk:0.1.0'
+}
+```
+
+Maven and Gradle will automatically download the SDK and all its dependencies (gRPC, protobuf, etc.).
+
+**Fat JAR (with all dependencies bundled):**
+
+If you prefer the self-contained fat JAR with all dependencies included:
+
+```xml
+<dependencies>
+    <dependency>
+        <groupId>com.databricks</groupId>
+        <artifactId>zerobus-ingest-sdk</artifactId>
+        <version>0.1.0</version>
+        <classifier>jar-with-dependencies</classifier>
+    </dependency>
+</dependencies>
+```
+
+Or with Gradle:
+
+```groovy
+dependencies {
+    implementation 'com.databricks:zerobus-ingest-sdk:0.1.0:jar-with-dependencies'
+}
+```
+
+**Note:** The fat JAR is typically not needed for Maven/Gradle projects. Use the regular JAR (without classifier) unless you have a specific reason to bundle all dependencies.
+
+#### Option 2: Build from Source
 
 Clone and build the SDK:
 
@@ -135,52 +186,96 @@ mvn clean package
 
 This generates two JAR files in the `target/` directory:
 
-- **Regular JAR**: `databricks-zerobus-ingest-sdk-0.1.0.jar` (144KB)
+- **Regular JAR**: `zerobus-ingest-sdk-0.1.0.jar` (155KB)
   - Contains only the SDK classes
   - Requires all dependencies on the classpath
 
-- **Fat JAR**: `databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar` (18MB)
+- **Fat JAR**: `zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar` (18MB)
   - Contains SDK classes plus all dependencies bundled
   - Self-contained, easier to deploy
 
-**Which one to use?**
-- Use the **fat JAR** for simple deployments and standalone applications
-- Use the **regular JAR** when dependencies are managed by your build system (Maven/Gradle)
+**Which JAR to use?**
+- **Regular JAR**: When using Maven/Gradle (recommended)
+- **Fat JAR**: For standalone scripts or CLI tools without a build system
 
-#### 2. Create Your Application Project
+### Create Your Application Project
 
-Create a new Java project:
+#### Using Maven
+
+Create a new Maven project:
 
 ```bash
 mkdir my-zerobus-app
 cd my-zerobus-app
+```
+
+Create `pom.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.example</groupId>
+    <artifactId>my-zerobus-app</artifactId>
+    <version>1.0-SNAPSHOT</version>
+
+    <properties>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <dependencies>
+        <!-- Zerobus SDK -->
+        <dependency>
+            <groupId>com.databricks</groupId>
+            <artifactId>zerobus-ingest-sdk</artifactId>
+            <version>0.1.0</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Protobuf compilation -->
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.6.1</version>
+                <configuration>
+                    <protocArtifact>com.google.protobuf:protoc:3.24.0:exe:${os.detected.classifier}</protocArtifact>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+        <extensions>
+            <extension>
+                <groupId>kr.motd.maven</groupId>
+                <artifactId>os-maven-plugin</artifactId>
+                <version>1.7.1</version>
+            </extension>
+        </extensions>
+    </build>
+</project>
+```
+
+Create project structure:
+
+```bash
 mkdir -p src/main/java/com/example
 mkdir -p src/main/proto
 ```
 
-Project structure:
-```
-my-zerobus-app/
-├── src/
-│   └── main/
-│       ├── java/
-│       │   └── com/
-│       │       └── example/
-│       │           └── ZerobusClient.java
-│       └── proto/
-│           └── record.proto
-└── lib/
-    └── databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar
-```
-
-Copy the fat JAR to your project:
-
-```bash
-mkdir lib
-cp ../zerobus-sdk-java/target/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar lib/
-```
-
-#### 3. Define Your Protocol Buffer Schema
+#### Define Your Protocol Buffer Schema
 
 Create `src/main/proto/record.proto`:
 
@@ -215,10 +310,22 @@ Instead of manually writing and compiling your protobuf schema, you can automati
 
 The `GenerateProto` tool fetches your table schema from Unity Catalog and generates a corresponding proto2 definition file with the correct type mappings.
 
-**Basic Usage:**
+**First, download the fat JAR:**
+
+The proto generation tool requires the fat JAR (all dependencies included):
 
 ```bash
-java -jar lib/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar \
+# Download from Maven Central
+wget https://repo1.maven.org/maven2/com/databricks/zerobus-ingest-sdk/0.1.0/zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar
+
+# Or if you built from source, it's in target/
+# cp target/zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar .
+```
+
+**Run the tool:**
+
+```bash
+java -jar zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar \
   --uc-endpoint "https://dbc-a1b2c3d4-e5f6.cloud.databricks.com" \
   --client-id "your-service-principal-application-id" \
   --client-secret "your-service-principal-secret" \
@@ -353,17 +460,35 @@ public class ZerobusClient {
 }
 ```
 
-#### 5. Compile and Run
+#### Compile and Run
 
-Compile your application:
+**Using Maven:**
 
 ```bash
-javac -cp "lib/*" -d out src/main/java/com/example/ZerobusClient.java src/main/java/com/example/proto/Record.java
+# Compile protobuf and Java code
+mvn compile
+
+# Run your application
+mvn exec:java -Dexec.mainClass="com.example.ZerobusClient"
 ```
 
-Run your application:
+**Or build and run as JAR:**
 
 ```bash
+# Package into JAR
+mvn package
+
+# Run the JAR
+java -jar target/my-zerobus-app-1.0-SNAPSHOT.jar
+```
+
+**Using downloaded JAR (without Maven):**
+
+```bash
+# Compile
+javac -cp "lib/*" -d out src/main/java/com/example/ZerobusClient.java src/main/java/com/example/proto/Record.java
+
+# Run
 java -cp "lib/*:out" com.example.ZerobusClient
 ```
 
