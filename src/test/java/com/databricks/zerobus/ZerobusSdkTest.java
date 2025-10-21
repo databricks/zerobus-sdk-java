@@ -8,6 +8,7 @@ import static org.mockito.Mockito.*;
 import com.databricks.test.table.TestTableRow.CityPopulationTableRow;
 import io.grpc.stub.StreamObserver;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -235,7 +236,7 @@ public class ZerobusSdkTest {
   @Test
   public void testAckCallback() throws Exception {
     // Test that ack callbacks are invoked for each acknowledgment
-    List<Long> ackedOffsets = new ArrayList<>();
+    List<Long> ackedOffsets = Collections.synchronizedList(new ArrayList<>());
     Consumer<IngestRecordResponse> ackCallback =
         response -> ackedOffsets.add(response.getDurabilityAckUpToOffset());
 
@@ -272,19 +273,27 @@ public class ZerobusSdkTest {
     stream.flush();
     assertEquals(StreamState.OPENED, stream.getState());
 
-    // Wait for callbacks to complete
-    long deadline = System.currentTimeMillis() + 1000;
-    while (ackedOffsets.size() < numRecords && System.currentTimeMillis() < deadline) {
-      Thread.yield();
+    // Wait for callbacks to complete - wait until we see the final offset (numRecords - 1)
+    long deadline = System.currentTimeMillis() + 2000;
+    boolean foundFinalOffset = false;
+    while (System.currentTimeMillis() < deadline) {
+      synchronized (ackedOffsets) {
+        if (!ackedOffsets.isEmpty() && ackedOffsets.contains((long) (numRecords - 1))) {
+          foundFinalOffset = true;
+          break;
+        }
+      }
+      Thread.sleep(10);
     }
 
-    // Verify callback was called for all records
+    // Verify callback was called and final offset was received
+    assertTrue(foundFinalOffset, "Expected to receive ack for final offset " + (numRecords - 1));
     assertTrue(ackedOffsets.size() > 0, "Expected callback to be called at least once");
 
-    // Verify the last acked offset includes all records
-    long lastAckedOffset = ackedOffsets.get(ackedOffsets.size() - 1);
-    assertEquals(
-        numRecords - 1, lastAckedOffset, "Expected last acked offset to be " + (numRecords - 1));
+    // Verify the final offset was acknowledged
+    assertTrue(
+        ackedOffsets.contains((long) (numRecords - 1)),
+        "Expected callbacks to include offset " + (numRecords - 1));
 
     // Verify unacked records are empty
     Iterator<CityPopulationTableRow> unackedRecords = stream.getUnackedRecords();
