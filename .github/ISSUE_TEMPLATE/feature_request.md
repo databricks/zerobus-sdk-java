@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a new feature or improvement for the Python SDK for Zerobus.
+about: Suggest a new feature or improvement for the Java SDK for Zerobus.
 title: "[FEATURE] "
 labels: ''
 assignees: ''
