@@ -147,7 +147,56 @@ dependencies {
 }
 ```
 
-Maven and Gradle will automatically download the SDK and all its dependencies (gRPC, protobuf, etc.).
+**Important**: You must also add the required dependencies manually, as they are not automatically included:
+
+```xml
+<!-- Add these dependencies in addition to the SDK -->
+<dependencies>
+    <!-- Zerobus SDK -->
+    <dependency>
+        <groupId>com.databricks</groupId>
+        <artifactId>zerobus-ingest-sdk</artifactId>
+        <version>0.1.0</version>
+    </dependency>
+
+    <!-- Required dependencies -->
+    <dependency>
+        <groupId>com.google.protobuf</groupId>
+        <artifactId>protobuf-java</artifactId>
+        <version>3.24.0</version>
+    </dependency>
+    <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-netty-shaded</artifactId>
+        <version>1.58.0</version>
+    </dependency>
+    <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-protobuf</artifactId>
+        <version>1.58.0</version>
+    </dependency>
+    <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-stub</artifactId>
+        <version>1.58.0</version>
+    </dependency>
+    <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-api</artifactId>
+        <version>1.7.36</version>
+    </dependency>
+    <dependency>
+        <groupId>org.slf4j</groupId>
+        <artifactId>slf4j-simple</artifactId>
+        <version>1.7.36</version>
+    </dependency>
+    <dependency>
+        <groupId>javax.annotation</groupId>
+        <artifactId>javax.annotation-api</artifactId>
+        <version>1.3.2</version>
+    </dependency>
+</dependencies>
+```
 
 **Fat JAR (with all dependencies bundled):**
 
@@ -236,35 +285,15 @@ Create `pom.xml`:
             <artifactId>zerobus-ingest-sdk</artifactId>
             <version>0.1.0</version>
         </dependency>
-    </dependencies>
 
-    <build>
-        <plugins>
-            <!-- Protobuf compilation -->
-            <plugin>
-                <groupId>org.xolstice.maven.plugins</groupId>
-                <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.6.1</version>
-                <configuration>
-                    <protocArtifact>com.google.protobuf:protoc:3.24.0:exe:${os.detected.classifier}</protocArtifact>
-                </configuration>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-        </plugins>
-        <extensions>
-            <extension>
-                <groupId>kr.motd.maven</groupId>
-                <artifactId>os-maven-plugin</artifactId>
-                <version>1.7.1</version>
-            </extension>
-        </extensions>
-    </build>
+        <!-- Required dependencies (see above for full list) -->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.24.0</version>
+        </dependency>
+        <!-- Add other dependencies from the list above -->
+    </dependencies>
 </project>
 ```
 
@@ -301,6 +330,8 @@ protoc --java_out=src/main/java src/main/proto/record.proto
 ```
 
 This generates `src/main/java/com/example/proto/Record.java`.
+
+**Note**: Ensure you have `protoc` version 24.4 installed. [Download protoc](https://github.com/protocolbuffers/protobuf/releases/tag/v24.4) if needed. The generated Java files are compatible with `protobuf-java` 3.24.0.
 
 ### Generate Protocol Buffer Schema from Unity Catalog (Alternative)
 
@@ -465,17 +496,21 @@ public class ZerobusClient {
 **Using Maven:**
 
 ```bash
-# Compile protobuf and Java code
-mvn compile
+# First, compile the proto file to generate Java classes
+protoc --java_out=src/main/java src/main/proto/record.proto
 
-# Run your application
+# Compile and run
+mvn compile
 mvn exec:java -Dexec.mainClass="com.example.ZerobusClient"
 ```
 
-**Or build and run as JAR:**
+**Or build as standalone JAR:**
 
 ```bash
-# Package into JAR
+# Generate proto classes
+protoc --java_out=src/main/java src/main/proto/record.proto
+
+# Package into executable JAR (add maven-shade-plugin to pom.xml)
 mvn package
 
 # Run the JAR
@@ -485,6 +520,9 @@ java -jar target/my-zerobus-app-1.0-SNAPSHOT.jar
 **Using downloaded JAR (without Maven):**
 
 ```bash
+# Generate proto classes
+protoc --java_out=src/main/java src/main/proto/record.proto
+
 # Compile
 javac -cp "lib/*" -d out src/main/java/com/example/ZerobusClient.java src/main/java/com/example/proto/Record.java
 
