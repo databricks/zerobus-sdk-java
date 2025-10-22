@@ -1,6 +1,6 @@
 ---
 name: SDK Issue
-about: Use this to report an issue with the Python SDK for Zerobus.
+about: Use this to report an issue with the Java SDK for Zerobus.
 title: "[ISSUE] "
 labels: ''
 assignees: ''
