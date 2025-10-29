@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -126,6 +127,7 @@ public class ZerobusStream<RecordType extends Message> {
   private static final int CREATE_STREAM_TIMEOUT_MS = 15000;
 
   private ZerobusStub stub;
+  private final Supplier<ZerobusStub> stubSupplier;
   final TableProperties<RecordType> tableProperties;
   private final ZerobusSdkStubFactory stubFactory;
   private final String serverEndpoint;
@@ -352,10 +354,10 @@ public class ZerobusStream<RecordType extends Message> {
             () -> {
               CompletableFuture<Void> createStreamTry = new CompletableFuture<>();
 
-              // The stub was created once with a token supplier, so we don't recreate it here
-              // The token supplier will provide a fresh token for each gRPC request
+              // Get a fresh stub from the supplier
+              stub = stubSupplier.get();
 
-              // Create the gRPC stream with the existing stub
+              // Create the gRPC stream with the fresh stub
               streamCreatedEvent = Optional.of(new CompletableFuture<>());
               stream =
                   Optional.of(
@@ -500,6 +502,9 @@ public class ZerobusStream<RecordType extends Message> {
       try {
         if (stream.isPresent()) {
           stream.get().onCompleted();
+          if (hardFailure) {
+            stream.get().cancel("Stream closed", null);
+          }
         }
       } catch (Exception e) {
         // Ignore errors during stream cleanup - stream may already be closed
@@ -528,6 +533,7 @@ public class ZerobusStream<RecordType extends Message> {
       stream = Optional.empty();
       streamCreatedEvent = Optional.empty();
       streamId = Optional.empty();
+      stub = null;
 
       this.notifyAll();
     }
@@ -1073,6 +1079,7 @@ public class ZerobusStream<RecordType extends Message> {
                       String.format(
                           "Server will close the stream in %.3fms. Triggering stream recovery.",
                           durationMs));
+                  streamFailureInfo.resetFailure(StreamFailureType.SERVER_CLOSED_STREAM);
                   handleStreamFailed(StreamFailureType.SERVER_CLOSED_STREAM, Optional.empty());
                 }
                 break;
@@ -1085,6 +1092,13 @@ public class ZerobusStream<RecordType extends Message> {
 
           @Override
           public void onError(Throwable t) {
+            synchronized (ZerobusStream.this) {
+              if (state == StreamState.CLOSED && !stream.isPresent()) {
+                logger.debug("Ignoring error on already closed stream: " + t.getMessage());
+                return;
+              }
+            }
+
             Optional<Throwable> error = Optional.of(t);
 
             if (t instanceof StatusRuntimeException) {
@@ -1336,7 +1350,7 @@ public class ZerobusStream<RecordType extends Message> {
   }
 
   public ZerobusStream(
-      ZerobusStub stub,
+      Supplier<ZerobusStub> stubSupplier,
       TableProperties<RecordType> tableProperties,
       ZerobusSdkStubFactory stubFactory,
       String serverEndpoint,
@@ -1347,7 +1361,8 @@ public class ZerobusStream<RecordType extends Message> {
       StreamConfigurationOptions options,
       ExecutorService zerobusStreamExecutor,
       ExecutorService ec) {
-    this.stub = stub;
+    this.stub = null;
+    this.stubSupplier = stubSupplier;
     this.tableProperties = tableProperties;
     this.stubFactory = stubFactory;
     this.serverEndpoint = serverEndpoint;

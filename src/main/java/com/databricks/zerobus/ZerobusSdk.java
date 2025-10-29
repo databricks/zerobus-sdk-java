@@ -10,6 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -160,7 +161,7 @@ public class ZerobusSdk {
       logger.debug("Creating stream for table: " + tableProperties.getTableName());
 
       // Create a token supplier that generates a fresh token for each gRPC request
-      java.util.function.Supplier<String> tokenSupplier =
+      Supplier<String> tokenSupplier =
           () -> {
             try {
               return TokenFactory.getZerobusToken(
@@ -174,14 +175,15 @@ public class ZerobusSdk {
             }
           };
 
-      // Create gRPC stub once with token supplier - it will fetch fresh tokens as needed
-      ZerobusGrpc.ZerobusStub stub =
-          stubFactory.createStubWithTokenSupplier(
-              serverEndpoint, tableProperties.getTableName(), tokenSupplier);
+      // Create a stub supplier that generates a fresh stub with token supplier each time
+      Supplier<ZerobusGrpc.ZerobusStub> stubSupplier =
+          () ->
+              stubFactory.createStubWithTokenSupplier(
+                  serverEndpoint, tableProperties.getTableName(), tokenSupplier);
 
       ZerobusStream<RecordType> stream =
           new ZerobusStream<>(
-              stub,
+              stubSupplier,
               tableProperties,
               stubFactory,
               serverEndpoint,
