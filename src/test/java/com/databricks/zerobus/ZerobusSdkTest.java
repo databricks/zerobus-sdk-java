@@ -38,6 +38,7 @@ public class ZerobusSdkTest {
   private ZerobusSdk zerobusSdk;
   private ZerobusSdkStubFactory zerobusSdkStubFactory;
   private org.mockito.MockedStatic<TokenFactory> tokenFactoryMock;
+  private io.grpc.stub.ClientCallStreamObserver<EphemeralStreamRequest> spiedStream;
 
   @BeforeEach
   public void setUp() {
@@ -76,7 +77,10 @@ public class ZerobusSdkTest {
                   (StreamObserver<EphemeralStreamResponse>) invocation.getArgument(0);
 
               mockedGrpcServer.initialize(ackSender);
-              return mockedGrpcServer.getMessageReceiver();
+
+              // Spy on the message receiver to verify cancel() is called
+              spiedStream = spy(mockedGrpcServer.getMessageReceiver());
+              return spiedStream;
             })
         .when(zerobusStub)
         .ephemeralStream(any());
@@ -377,5 +381,41 @@ public class ZerobusSdkTest {
 
     stream.close();
     assertEquals(StreamState.CLOSED, stream.getState());
+  }
+
+  @Test
+  public void testGrpcStreamIsCancelledOnClose() throws Exception {
+    // Test that the underlying gRPC stream is properly cancelled when stream.close() is called
+    mockedGrpcServer.injectAckRecord(0);
+
+    TableProperties<CityPopulationTableRow> tableProperties =
+        new TableProperties<>("test-table", CityPopulationTableRow.getDefaultInstance());
+    StreamConfigurationOptions options =
+        StreamConfigurationOptions.builder().setRecovery(false).build();
+
+    ZerobusStream<CityPopulationTableRow> stream =
+        zerobusSdk.createStream(tableProperties, "client-id", "client-secret", options).get();
+
+    assertEquals(StreamState.OPENED, stream.getState());
+
+    // Ingest one record
+    CompletableFuture<Void> writeCompleted =
+        stream.ingestRecord(
+            CityPopulationTableRow.newBuilder()
+                .setCityName("test-city")
+                .setPopulation(1000)
+                .build());
+
+    writeCompleted.get(5, TimeUnit.SECONDS);
+
+    // Close the stream
+    stream.close();
+    assertEquals(StreamState.CLOSED, stream.getState());
+
+    // Verify that cancel() was called on the gRPC stream
+    verify(spiedStream, times(1)).cancel(anyString(), any());
+
+    // Also verify onCompleted() was called
+    verify(spiedStream, times(1)).onCompleted();
   }
 }
