@@ -23,7 +23,7 @@
 
 ### API Changes
 
-**⚠️ Breaking Changes:**
+**Breaking Changes**
 
 - **Protocol Buffers 4.x Migration**: If you use the regular JAR (not the fat JAR), you must upgrade to protobuf-java 4.33.0 and regenerate any custom `.proto` files using protoc 4.x
   - Download protoc 4.33.0 from: https://github.com/protocolbuffers/protobuf/releases/tag/v33.0
