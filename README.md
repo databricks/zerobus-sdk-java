@@ -47,19 +47,19 @@ The Databricks Zerobus Ingest SDK for Java provides a high-performance client fo
 - No additional dependencies required - all dependencies are bundled
 
 **When using the regular JAR**:
-- [`protobuf-java` 3.24.0](https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java/3.24.0)
-- [`grpc-netty-shaded` 1.58.0](https://mvnrepository.com/artifact/io.grpc/grpc-netty-shaded/1.58.0)
-- [`grpc-protobuf` 1.58.0](https://mvnrepository.com/artifact/io.grpc/grpc-protobuf/1.58.0)
-- [`grpc-stub` 1.58.0](https://mvnrepository.com/artifact/io.grpc/grpc-stub/1.58.0)
+- [`protobuf-java` 4.33.0](https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java/4.33.0)
+- [`grpc-netty-shaded` 1.76.0](https://mvnrepository.com/artifact/io.grpc/grpc-netty-shaded/1.76.0)
+- [`grpc-protobuf` 1.76.0](https://mvnrepository.com/artifact/io.grpc/grpc-protobuf/1.76.0)
+- [`grpc-stub` 1.76.0](https://mvnrepository.com/artifact/io.grpc/grpc-stub/1.76.0)
 - [`javax.annotation-api` 1.3.2](https://mvnrepository.com/artifact/javax.annotation/javax.annotation-api/1.3.2)
-- [`slf4j-api` 1.7.36](https://mvnrepository.com/artifact/org.slf4j/slf4j-api/1.7.36)
-- An SLF4J implementation such as [`slf4j-simple` 1.7.36](https://mvnrepository.com/artifact/org.slf4j/slf4j-simple/1.7.36) or [`logback-classic` 1.2.11](https://mvnrepository.com/artifact/ch.qos.logback/logback-classic/1.2.11)
+- [`slf4j-api` 2.0.17](https://mvnrepository.com/artifact/org.slf4j/slf4j-api/2.0.17)
+- An SLF4J implementation such as [`slf4j-simple` 2.0.17](https://mvnrepository.com/artifact/org.slf4j/slf4j-simple/2.0.17) or [`logback-classic` 1.4.14](https://mvnrepository.com/artifact/ch.qos.logback/logback-classic/1.4.14)
 
 ### Build Requirements (only for building from source)
 
 - **Java**: 8 or higher - [Download Java](https://adoptium.net/)
 - **Maven**: 3.6 or higher - [Download Maven](https://maven.apache.org/download.cgi)
-- **Protocol Buffers Compiler** (`protoc`): 24.4 - [Download protoc](https://github.com/protocolbuffers/protobuf/releases/tag/v24.4) (for compiling your own `.proto` schemas)
+- **Protocol Buffers Compiler** (`protoc`): 33.0 - [Download protoc](https://github.com/protocolbuffers/protobuf/releases/tag/v33.0) (for compiling your own `.proto` schemas)
 
 ## Quick Start User Guide
 
@@ -163,32 +163,32 @@ dependencies {
     <dependency>
         <groupId>com.google.protobuf</groupId>
         <artifactId>protobuf-java</artifactId>
-        <version>3.24.0</version>
+        <version>4.33.0</version>
     </dependency>
     <dependency>
         <groupId>io.grpc</groupId>
         <artifactId>grpc-netty-shaded</artifactId>
-        <version>1.58.0</version>
+        <version>1.76.0</version>
     </dependency>
     <dependency>
         <groupId>io.grpc</groupId>
         <artifactId>grpc-protobuf</artifactId>
-        <version>1.58.0</version>
+        <version>1.76.0</version>
     </dependency>
     <dependency>
         <groupId>io.grpc</groupId>
         <artifactId>grpc-stub</artifactId>
-        <version>1.58.0</version>
+        <version>1.76.0</version>
     </dependency>
     <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-api</artifactId>
-        <version>1.7.36</version>
+        <version>2.0.17</version>
     </dependency>
     <dependency>
         <groupId>org.slf4j</groupId>
         <artifactId>slf4j-simple</artifactId>
-        <version>1.7.36</version>
+        <version>2.0.17</version>
     </dependency>
     <dependency>
         <groupId>javax.annotation</groupId>
@@ -290,7 +290,7 @@ Create `pom.xml`:
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>3.24.0</version>
+            <version>4.33.0</version>
         </dependency>
         <!-- Add other dependencies from the list above -->
     </dependencies>
@@ -331,7 +331,7 @@ protoc --java_out=src/main/java src/main/proto/record.proto
 
 This generates `src/main/java/com/example/proto/Record.java`.
 
-**Note**: Ensure you have `protoc` version 24.4 installed. [Download protoc](https://github.com/protocolbuffers/protobuf/releases/tag/v24.4) if needed. The generated Java files are compatible with `protobuf-java` 3.24.0.
+**Note**: Ensure you have `protoc` version 33.0 installed. [Download protoc](https://github.com/protocolbuffers/protobuf/releases/tag/v33.0) if needed. The generated Java files are compatible with `protobuf-java` 4.33.0.
 
 ### Generate Protocol Buffer Schema from Unity Catalog (Alternative)
 
@@ -639,7 +639,7 @@ Add to your Maven dependencies:
 <dependency>
     <groupId>org.slf4j</groupId>
     <artifactId>slf4j-simple</artifactId>
-    <version>1.7.36</version>
+    <version>2.0.17</version>
 </dependency>
 ```
 
@@ -657,7 +657,7 @@ Add to your Maven dependencies:
 <dependency>
     <groupId>ch.qos.logback</groupId>
     <artifactId>logback-classic</artifactId>
-    <version>1.2.11</version>
+    <version>1.4.14</version>
 </dependency>
 ```
 
