@@ -1,0 +1,341 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.databricks</groupId>
+    <artifactId>zerobus-java-parent</artifactId>
+    <version>0.2.0</version>
+  </parent>
+  <artifactId>zerobus-ingest-sdk</artifactId>
+  <packaging>jar</packaging>
+  <name>Zerobus Ingest SDK for Java</name>
+  <description>Databricks Zerobus Ingest SDK for Java - Direct ingestion to Delta tables</description>
+  <url>https://github.com/databricks/zerobus-sdk-java</url>
+  <dependencies>
+    <!-- Zerobus Common (HTTP client and JSON utilities) -->
+    <dependency>
+      <groupId>com.databricks</groupId>
+      <artifactId>zerobus-common</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <!-- Protocol Buffers -->
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+    </dependency>
+    <!-- gRPC dependencies -->
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-netty-shaded</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-protobuf</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-stub</artifactId>
+    </dependency>
+    <!-- Annotations for generated code -->
+    <dependency>
+      <groupId>javax.annotation</groupId>
+      <artifactId>javax.annotation-api</artifactId>
+    </dependency>
+    <!-- JSR-305 nullability annotations -->
+    <dependency>
+      <groupId>com.google.code.findbugs</groupId>
+      <artifactId>jsr305</artifactId>
+    </dependency>
+    <!-- SLF4J API -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+    </dependency>
+    <!-- SLF4J NOP Implementation (silent logging for tests) -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-nop</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <!-- Test dependencies -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>io.grpc</groupId>
+      <artifactId>grpc-testing</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+  <build>
+    <plugins>
+      <!-- Protobuf compilation -->
+      <plugin>
+        <groupId>org.xolstice.maven.plugins</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <version>0.6.1</version>
+        <configuration>
+          <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+          <pluginId>grpc-java</pluginId>
+          <pluginArtifact>io.grpc:protoc-gen-grpc-java:${grpc.version}:exe:${os.detected.classifier}</pluginArtifact>
+        </configuration>
+        <executions>
+          <execution>
+            <id>compile-protobuf</id>
+            <goals>
+              <goal>compile</goal>
+              <goal>compile-custom</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>test-compile-protobuf</id>
+            <goals>
+              <goal>test-compile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>com.diffplug.spotless</groupId>
+        <artifactId>spotless-maven-plugin</artifactId>
+        <configuration>
+          <java>
+            <googleJavaFormat/>
+            <importOrder/>
+            <removeUnusedImports/>
+            <formatAnnotations/>
+          </java>
+          <pom>
+            <includes>
+              <include>pom.xml</include>
+            </includes>
+            <sortPom>
+              <expandEmptyElements>false</expandEmptyElements>
+              <keepBlankLines>false</keepBlankLines>
+              <sortDependencies/>
+              <sortPlugins/>
+              <sortProperties>true</sortProperties>
+              <sortModules>true</sortModules>
+              <indentSchemaLocation>true</indentSchemaLocation>
+            </sortPom>
+          </pom>
+        </configuration>
+      </plugin>
+      <!-- Maven Surefire Plugin for running tests -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+      </plugin>
+      <!-- JaCoCo for code coverage -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.11</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <goals>
+              <goal>report</goal>
+            </goals>
+            <phase>test</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+      </plugin>
+      <!-- Maven Shade Plugin for creating shaded JAR with relocated dependencies -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <phase>package</phase>
+            <configuration>
+              <shadedArtifactAttached>true</shadedArtifactAttached>
+              <shadedClassifierName>shaded</shadedClassifierName>
+              <!-- Relocate dependencies to avoid classpath conflicts with user applications -->
+              <relocations>
+                <!-- Protobuf: Prevents conflicts when users have different protobuf versions -->
+                <relocation>
+                  <pattern>com.google.protobuf</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.protobuf</shadedPattern>
+                </relocation>
+                <!-- gRPC: Prevents conflicts with user's gRPC version -->
+                <relocation>
+                  <pattern>io.grpc</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.grpc</shadedPattern>
+                </relocation>
+                <!-- Guava (transitive from gRPC): Common source of conflicts -->
+                <relocation>
+                  <pattern>com.google.common</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.guava</shadedPattern>
+                </relocation>
+                <!-- Perfmark (transitive from gRPC) -->
+                <relocation>
+                  <pattern>io.perfmark</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.perfmark</shadedPattern>
+                </relocation>
+                <!-- Error Prone annotations (transitive from Guava) -->
+                <relocation>
+                  <pattern>com.google.errorprone</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.errorprone</shadedPattern>
+                </relocation>
+                <!-- Google API protos (transitive from grpc-protobuf) -->
+                <relocation>
+                  <pattern>com.google.api</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.api</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.rpc</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.rpc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.type</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.type</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.cloud</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.cloud</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.logging</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.logging</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.longrunning</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.longrunning</shadedPattern>
+                </relocation>
+              </relocations>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <manifestEntries>
+                    <Implementation-Title>${project.name}</Implementation-Title>
+                    <Implementation-Version>${project.version}</Implementation-Version>
+                    <!-- No Main-Class - this is a library -->
+                  </manifestEntries>
+                </transformer>
+                <!-- Handle META-INF/services for gRPC -->
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/MANIFEST.MF</exclude>
+                    <exclude>META-INF/LICENSE.txt</exclude>
+                    <exclude>META-INF/versions/9/module-info.class</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Maven Source Plugin - required for Maven Central -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Maven Javadoc Plugin - required for Maven Central -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <configuration>
+          <doclint>none</doclint>
+          <quiet>true</quiet>
+          <!-- Include generated protobuf/gRPC sources -->
+          <sourcepath>${project.basedir}/src/main/java:${project.build.directory}/generated-sources/protobuf/java:${project.build.directory}/generated-sources/protobuf/grpc-java</sourcepath>
+        </configuration>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Maven GPG Plugin - required for Maven Central signing -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-gpg-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>sign-artifacts</id>
+            <goals>
+              <goal>sign</goal>
+            </goals>
+            <phase>verify</phase>
+            <configuration>
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+              </gpgArguments>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Central Publishing Plugin - for deploying to Maven Central Portal -->
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <extensions>true</extensions>
+        <configuration>
+          <publishingServerId>central</publishingServerId>
+          <autoPublish>false</autoPublish>
+        </configuration>
+      </plugin>
+    </plugins>
+    <extensions>
+      <extension>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>1.7.1</version>
+      </extension>
+    </extensions>
+  </build>
+</project>

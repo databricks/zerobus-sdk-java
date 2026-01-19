@@ -1,5 +1,12 @@
 # Databricks Zerobus Ingest SDK for Java
 
+[![Build](https://github.com/databricks/zerobus-sdk-java/actions/workflows/push.yml/badge.svg)](https://github.com/databricks/zerobus-sdk-java/actions/workflows/push.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/com.databricks/zerobus-ingest-sdk)](https://search.maven.org/artifact/com.databricks/zerobus-ingest-sdk)
+[![Javadoc](https://javadoc.io/badge2/com.databricks/zerobus-ingest-sdk/javadoc.svg)](https://javadoc.io/doc/com.databricks/zerobus-ingest-sdk)
+![Coverage](https://raw.githubusercontent.com/databricks/zerobus-sdk-java/badges/.github/badges/jacoco.svg)
+![Java](https://img.shields.io/badge/Java-8%2B-blue)
+[![License](https://img.shields.io/badge/License-Databricks-blue.svg)](LICENSE)
+
 [Public Preview](https://docs.databricks.com/release-notes/release-types.html): This SDK is supported for production use cases and is available to all customers. Databricks is actively working on stabilizing the Zerobus Ingest SDK for Java. Minor version updates may include backwards-incompatible changes.
 
 We are keen to hear feedback from you on this SDK. Please [file issues](https://github.com/databricks/zerobus-sdk-java/issues), and we will address them.
@@ -20,6 +27,8 @@ The Databricks Zerobus Ingest SDK for Java provides a high-performance client fo
 - [Usage Examples](#usage-examples)
   - [Blocking Ingestion](#blocking-ingestion)
   - [Non-Blocking Ingestion](#non-blocking-ingestion)
+  - [JSON Record Ingestion](#json-record-ingestion)
+  - [Using Custom Headers Provider](#using-custom-headers-provider)
 - [Configuration](#configuration)
 - [Logging](#logging)
 - [Error Handling](#error-handling)
@@ -32,7 +41,9 @@ The Databricks Zerobus Ingest SDK for Java provides a high-performance client fo
 - **Automatic recovery**: Built-in retry and recovery mechanisms
 - **Flexible configuration**: Customizable stream behavior and timeouts
 - **Protocol Buffers**: Strongly-typed schema using protobuf
+- **JSON record support**: Direct JSON ingestion without protobuf encoding
 - **OAuth 2.0 authentication**: Secure authentication with client credentials
+- **Custom headers provider**: Flexible authentication strategies and custom headers support
 
 ## Requirements
 
@@ -43,8 +54,8 @@ The Databricks Zerobus Ingest SDK for Java provides a high-performance client fo
 
 ### Dependencies
 
-**When using the fat JAR** (recommended for most users):
-- No additional dependencies required - all dependencies are bundled
+**When using the shaded JAR** (recommended for most users):
+- No additional dependencies required - all dependencies are bundled and relocated
 
 **When using the regular JAR**:
 - [`protobuf-java` 4.33.0](https://mvnrepository.com/artifact/com.google.protobuf/protobuf-java/4.33.0)
@@ -134,7 +145,7 @@ Add the SDK as a dependency in your `pom.xml`:
     <dependency>
         <groupId>com.databricks</groupId>
         <artifactId>zerobus-ingest-sdk</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.0</version>
     </dependency>
 </dependencies>
 ```
@@ -143,7 +154,7 @@ Or with Gradle (`build.gradle`):
 
 ```groovy
 dependencies {
-    implementation 'com.databricks:zerobus-ingest-sdk:0.1.0'
+    implementation 'com.databricks:zerobus-ingest-sdk:0.2.0'
 }
 ```
 
@@ -156,7 +167,7 @@ dependencies {
     <dependency>
         <groupId>com.databricks</groupId>
         <artifactId>zerobus-ingest-sdk</artifactId>
-        <version>0.1.0</version>
+        <version>0.2.0</version>
     </dependency>
 
     <!-- Required dependencies -->
@@ -198,17 +209,17 @@ dependencies {
 </dependencies>
 ```
 
-**Fat JAR (with all dependencies bundled):**
+**Shaded JAR (with all dependencies bundled and relocated):**
 
-If you prefer the self-contained fat JAR with all dependencies included:
+If you prefer the self-contained shaded JAR with all dependencies included:
 
 ```xml
 <dependencies>
     <dependency>
         <groupId>com.databricks</groupId>
         <artifactId>zerobus-ingest-sdk</artifactId>
-        <version>0.1.0</version>
-        <classifier>jar-with-dependencies</classifier>
+        <version>0.2.0</version>
+        <classifier>shaded</classifier>
     </dependency>
 </dependencies>
 ```
@@ -217,15 +228,15 @@ Or with Gradle:
 
 ```groovy
 dependencies {
-    implementation 'com.databricks:zerobus-ingest-sdk:0.1.0:jar-with-dependencies'
+    implementation 'com.databricks:zerobus-ingest-sdk:0.2.0:shaded'
 }
 ```
 
-**Note:** The fat JAR is typically not needed for Maven/Gradle projects. Use the regular JAR (without classifier) unless you have a specific reason to bundle all dependencies.
+**Note:** The shaded JAR is typically not needed for Maven/Gradle projects. Use the regular JAR (without classifier) unless you have a specific reason to bundle all dependencies.
 
 #### Option 2: Build from Source
 
-Clone and build the SDK:
+Clone and build:
 
 ```bash
 git clone https://github.com/databricks/zerobus-sdk-java.git
@@ -233,19 +244,22 @@ cd zerobus-sdk-java
 mvn clean package
 ```
 
-This generates two JAR files in the `target/` directory:
+This is a multi-module project:
+- `common/` - Shared utilities (HTTP client and JSON parsing)
+- `sdk/` - The Zerobus Ingest SDK library
+- `cli/` - Command-line tools
 
-- **Regular JAR**: `zerobus-ingest-sdk-0.1.0.jar` (155KB)
-  - Contains only the SDK classes
-  - Requires all dependencies on the classpath
+**SDK JARs** (in `sdk/target/`):
+- `zerobus-ingest-sdk-0.2.0.jar` (~240KB) - Library for your applications
+- `zerobus-ingest-sdk-0.2.0-shaded.jar` (~20MB) - Library with all dependencies bundled
 
-- **Fat JAR**: `zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar` (18MB)
-  - Contains SDK classes plus all dependencies bundled
-  - Self-contained, easier to deploy
+**CLI JAR** (in `cli/target/`):
+- `zerobus-cli-0.1.0.jar` (~20MB) - Standalone command-line tool
 
 **Which JAR to use?**
-- **Regular JAR**: When using Maven/Gradle (recommended)
-- **Fat JAR**: For standalone scripts or CLI tools without a build system
+- **SDK Regular JAR**: When using Maven/Gradle (recommended for applications)
+- **SDK Shaded JAR**: For standalone scripts without a build system
+- **CLI JAR**: For generating proto schemas from Unity Catalog tables
 
 ### Create Your Application Project
 
@@ -283,7 +297,7 @@ Create `pom.xml`:
         <dependency>
             <groupId>com.databricks</groupId>
             <artifactId>zerobus-ingest-sdk</artifactId>
-            <version>0.1.0</version>
+            <version>0.2.0</version>
         </dependency>
 
         <!-- Required dependencies (see above for full list) -->
@@ -335,106 +349,26 @@ This generates `src/main/java/com/example/proto/Record.java`.
 
 ### Generate Protocol Buffer Schema from Unity Catalog (Alternative)
 
-Instead of manually writing and compiling your protobuf schema, you can automatically generate it from an existing Unity Catalog table schema using the included `GenerateProto` tool.
-
-#### Using the Proto Generation Tool
-
-The `GenerateProto` tool fetches your table schema from Unity Catalog and generates a corresponding proto2 definition file with the correct type mappings.
-
-**First, download the fat JAR:**
-
-The proto generation tool requires the fat JAR (all dependencies included):
+Instead of manually writing your protobuf schema, you can generate it from an existing Unity Catalog table using the Zerobus CLI:
 
 ```bash
-# Download from Maven Central
-wget https://repo1.maven.org/maven2/com/databricks/zerobus-ingest-sdk/0.1.0/zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar
-
-# Or if you built from source, it's in target/
-# cp target/zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar .
-```
-
-**Run the tool:**
-
-```bash
-java -jar zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar \
+java -jar zerobus-cli-0.1.0.jar generate-proto \
   --uc-endpoint "https://dbc-a1b2c3d4-e5f6.cloud.databricks.com" \
   --client-id "your-service-principal-application-id" \
   --client-secret "your-service-principal-secret" \
   --table "main.default.air_quality" \
-  --output "src/main/proto/record.proto" \
-  --proto-msg "AirQuality"
+  --output "src/main/proto/record.proto"
 ```
 
-**Parameters:**
-- `--uc-endpoint`: Your workspace URL (e.g., `https://dbc-a1b2c3d4-e5f6.cloud.databricks.com`)
-- `--client-id`: Service principal application ID
-- `--client-secret`: Service principal secret
-- `--table`: Fully qualified table name (catalog.schema.table)
-- `--output`: Output path for the generated proto file
-- `--proto-msg`: (Optional) Name for the protobuf message (defaults to table name)
+After generating, compile the proto file:
 
-**Example:**
-
-For a table defined as:
-```sql
-CREATE TABLE main.default.air_quality (
-    device_name STRING,
-    temp INT,
-    humidity BIGINT
-)
-USING DELTA;
-```
-
-Running the generation tool will create `src/main/proto/record.proto`:
-```protobuf
-syntax = "proto2";
-
-package com.example;
-
-option java_package = "com.example.proto";
-option java_outer_classname = "Record";
-
-message AirQuality {
-    optional string device_name = 1;
-    optional int32 temp = 2;
-    optional int64 humidity = 3;
-}
-```
-
-After generating the proto file, compile it as shown above:
 ```bash
 protoc --java_out=src/main/java src/main/proto/record.proto
 ```
 
-**Type Mappings:**
+See the [CLI README](cli/README.md) for installation instructions, all parameters, type mappings, and complex type examples.
 
-The tool automatically maps Unity Catalog types to proto2 types:
-
-| Delta Type | Proto2 Type |
-|-----------|-------------|
-| INT, SMALLINT, SHORT | int32 |
-| BIGINT, LONG | int64 |
-| FLOAT | float |
-| DOUBLE | double |
-| STRING, VARCHAR | string |
-| BOOLEAN | bool |
-| BINARY | bytes |
-| DATE | int32 |
-| TIMESTAMP | int64 |
-| ARRAY\<type\> | repeated type |
-| MAP\<key, value\> | map\<key, value\> |
-| STRUCT\<fields\> | nested message |
-
-**Benefits:**
-- No manual schema creation required
-- Ensures schema consistency between your table and protobuf definitions
-- Automatically handles complex types (arrays, maps, structs)
-- Reduces errors from manual type mapping
-- No need to clone the repository - runs directly from the SDK JAR
-
-For detailed documentation and examples, see [tools/README.md](tools/README.md).
-
-#### 4. Write Your Client Code
+### Write Your Client Code
 
 Create `src/main/java/com/example/ZerobusClient.java`:
 
@@ -453,39 +387,36 @@ public class ZerobusClient {
         String clientId = "your-service-principal-application-id";
         String clientSecret = "your-service-principal-secret";
 
-        // Initialize SDK
-        ZerobusSdk sdk = new ZerobusSdk(serverEndpoint, workspaceUrl);
+        // Initialize SDK (implements AutoCloseable)
+        try (ZerobusSdk sdk = new ZerobusSdk(serverEndpoint, workspaceUrl)) {
 
-        // Configure table properties
-        TableProperties<AirQuality> tableProperties = new TableProperties<>(
-            tableName,
-            AirQuality.getDefaultInstance()
-        );
+            // Create stream using the fluent builder API
+            // The builder returns a type-safe ProtoZerobusStream<AirQuality>
+            ProtoZerobusStream<AirQuality> stream = sdk.streamBuilder(tableName)
+                .clientCredentials(clientId, clientSecret)
+                .compiledProto(AirQuality.getDefaultInstance())
+                .build()
+                .join();
 
-        // Create stream
-        ZerobusStream<AirQuality> stream = sdk.createStream(
-            tableProperties,
-            clientId,
-            clientSecret
-        ).join();
+            // Both SDK and stream implement AutoCloseable
+            try {
+                // Ingest records - type-safe: only AirQuality records accepted
+                for (int i = 0; i < 100; i++) {
+                    AirQuality record = AirQuality.newBuilder()
+                        .setDeviceName("sensor-" + (i % 10))
+                        .setTemp(20 + (i % 15))
+                        .setHumidity(50 + (i % 40))
+                        .build();
 
-        try {
-            // Ingest records
-            for (int i = 0; i < 100; i++) {
-                AirQuality record = AirQuality.newBuilder()
-                    .setDeviceName("sensor-" + (i % 10))
-                    .setTemp(20 + (i % 15))
-                    .setHumidity(50 + (i % 40))
-                    .build();
+                    stream.ingest(record);
 
-                stream.ingestRecord(record).join(); // Wait for durability
+                    System.out.println("Ingested record " + (i + 1));
+                }
 
-                System.out.println("Ingested record " + (i + 1));
+                System.out.println("Successfully ingested 100 records!");
+            } finally {
+                stream.close();
             }
-
-            System.out.println("Successfully ingested 100 records!");
-        } finally {
-            stream.close();
         }
     }
 }
@@ -540,21 +471,83 @@ Successfully ingested 100 records!
 
 ## Usage Examples
 
-See the `examples/` directory for complete working examples:
+See the `sdk/examples/` directory for complete working examples organized by schema type:
 
-- **BlockingIngestionExample.java** - Synchronous ingestion with progress tracking
-- **NonBlockingIngestionExample.java** - High-throughput asynchronous ingestion
+**Proto Examples:**
+- `proto/compiled/SingleRecordExample.java` - Single record ingestion with compiled proto
+- `proto/compiled/BatchRecordExample.java` - Batch ingestion with compiled proto
+- `proto/dynamic/SingleRecordExample.java` - Single record ingestion with dynamic proto
+- `proto/dynamic/BatchRecordExample.java` - Batch ingestion with dynamic proto
 
-### Blocking Ingestion
+**JSON Examples:**
+- `json/SingleRecordExample.java` - Single JSON record ingestion
+- `json/BatchRecordExample.java` - Batch JSON record ingestion
 
-Ingest records synchronously, waiting for each record to be acknowledged:
+### Fluent Stream Builder API
+
+The SDK provides a fluent builder API for creating streams with **compile-time type safety**. The step builder pattern enforces that you choose an authentication path before schema selection - the compiler prevents you from calling schema methods directly on `StreamBuilder`.
+
+**Builder Flow:**
+
+```
+sdk.streamBuilder(tableName)          → StreamBuilder
+    .clientCredentials(...)           → AuthenticatedStreamBuilder  (OAuth path)
+    .unauthenticated()                → UnauthenticatedStreamBuilder (custom auth path)
+
+    .maxInflightRequests(...)         → same builder (optional config methods)
+    .headersProvider(...)             → same builder (optional, for custom headers)
+    .compiledProto(...)               → ProtoStreamBuilder<T>       (or .dynamicProto() or .json())
+    .build()                          → CompletableFuture<ProtoZerobusStream<T>>
+```
+
+**Example usage:**
 
 ```java
-ZerobusStream<AirQuality> stream = sdk.createStream(
-    tableProperties,
-    clientId,
-    clientSecret
-).join();
+// OAuth authentication (most common)
+ProtoZerobusStream<AirQuality> protoStream = sdk.streamBuilder(tableName)
+    .clientCredentials(clientId, clientSecret)  // Returns AuthenticatedStreamBuilder
+    .maxInflightRequests(50000)                 // Config methods
+    .recovery(true)
+    .compiledProto(AirQuality.getDefaultInstance())
+    .build()
+    .join();
+
+// JSON stream with OAuth
+JsonZerobusStream jsonStream = sdk.streamBuilder(tableName)
+    .clientCredentials(clientId, clientSecret)
+    .json()
+    .build()
+    .join();
+
+// Custom authentication with headers provider
+JsonZerobusStream stream = sdk.streamBuilder(tableName)
+    .unauthenticated()                // Returns UnauthenticatedStreamBuilder
+    .headersProvider(customProvider)  // Set custom auth headers
+    .json()
+    .build()
+    .join();
+
+// This won't compile - schema selection requires auth path first:
+// sdk.streamBuilder(tableName)
+//     .compiledProto(...)  // ❌ Compile error: method not found on StreamBuilder
+```
+
+**The step builder pattern ensures:**
+- **Compile-time safety**: `clientCredentials()` and `unauthenticated()` return different builder types. Schema methods (`compiledProto`, `dynamicProto`, `json`) only exist on these builders, so the compiler enforces the correct order.
+- **Type safety**: Schema selection determines the return type (`ProtoZerobusStream<T>` or `JsonZerobusStream`)
+- **Validation**: Invalid parameters are caught at configuration time with clear error messages
+- **Fluent API**: Configuration methods can be chained in any order after choosing auth path
+
+### Compiled Proto Stream
+
+For compiled protobuf schemas (generated from `.proto` files):
+
+```java
+ProtoZerobusStream<AirQuality> stream = sdk.streamBuilder(tableName)
+    .clientCredentials(clientId, clientSecret)
+    .compiledProto(AirQuality.getDefaultInstance())
+    .build()
+    .join();
 
 try {
     for (int i = 0; i < 1000; i++) {
@@ -564,52 +557,192 @@ try {
             .setHumidity(50 + i % 40)
             .build();
 
-        stream.ingestRecord(record).join(); // Wait for durability
+        stream.ingest(record);  // Type-safe: only AirQuality accepted
     }
+    stream.flush();
 } finally {
     stream.close();
 }
 ```
 
-### Non-Blocking Ingestion
+### Dynamic Proto Stream
 
-Ingest records asynchronously for maximum throughput:
+For runtime-defined protobuf schemas:
 
 ```java
-StreamConfigurationOptions options = StreamConfigurationOptions.builder()
-    .setMaxInflightRecords(50000)
-    .setAckCallback(response ->
-        System.out.println("Acknowledged offset: " +
-            response.getDurabilityAckUpToOffset()))
+// Build descriptor programmatically
+DescriptorProto descriptorProto = DescriptorProto.newBuilder()
+    .setName("AirQuality")
+    .addField(FieldDescriptorProto.newBuilder()
+        .setName("device_name").setNumber(1)
+        .setType(FieldDescriptorProto.Type.TYPE_STRING)
+        .setLabel(FieldDescriptorProto.Label.LABEL_OPTIONAL))
+    .addField(FieldDescriptorProto.newBuilder()
+        .setName("temp").setNumber(2)
+        .setType(FieldDescriptorProto.Type.TYPE_INT32)
+        .setLabel(FieldDescriptorProto.Label.LABEL_OPTIONAL))
     .build();
 
-ZerobusStream<AirQuality> stream = sdk.createStream(
-    tableProperties,
-    clientId,
-    clientSecret,
-    options
-).join();
+// Create descriptor from proto
+FileDescriptorProto fileDescriptorProto = FileDescriptorProto.newBuilder()
+    .addMessageType(descriptorProto)
+    .build();
+FileDescriptor fileDescriptor = FileDescriptor.buildFrom(fileDescriptorProto, new FileDescriptor[]{});
+Descriptor descriptor = fileDescriptor.findMessageTypeByName("AirQuality");
 
-List<CompletableFuture<Void>> futures = new ArrayList<>();
+// Create dynamic proto stream
+ProtoZerobusStream<DynamicMessage> stream = sdk.streamBuilder(tableName)
+    .clientCredentials(clientId, clientSecret)
+    .dynamicProto(descriptor)
+    .build()
+    .join();
 
 try {
-    for (int i = 0; i < 100000; i++) {
-        AirQuality record = AirQuality.newBuilder()
-            .setDeviceName("sensor-" + (i % 10))
-            .setTemp(20 + i % 15)
-            .setHumidity(50 + i % 40)
+    for (int i = 0; i < 1000; i++) {
+        DynamicMessage record = DynamicMessage.newBuilder(descriptor)
+            .setField(descriptor.findFieldByName("device_name"), "sensor-" + i)
+            .setField(descriptor.findFieldByName("temp"), 20 + (i % 15))
             .build();
 
-        futures.add(stream.ingestRecord(record));
+        stream.ingest(record);
     }
-
-    // Flush and wait for all records
     stream.flush();
-    CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 } finally {
     stream.close();
 }
 ```
+
+### JSON Stream
+
+For JSON record ingestion (no protobuf required):
+
+```java
+JsonZerobusStream stream = sdk.streamBuilder(tableName)
+    .clientCredentials(clientId, clientSecret)
+    .maxInflightRequests(10000)
+    .json()
+    .build()
+    .join();
+
+try {
+    for (int i = 0; i < 1000; i++) {
+        String jsonRecord = String.format(
+            "{\"device_name\": \"sensor-%d\", \"temp\": %d, \"humidity\": %d}",
+            i % 10, 20 + (i % 15), 50 + (i % 40)
+        );
+
+        stream.ingest(jsonRecord);  // Type-safe: only String accepted
+    }
+    stream.flush();
+} finally {
+    stream.close();
+}
+```
+
+**Key differences from proto ingestion:**
+- Use `.json()` builder method instead of `.compiledProto()` or `.dynamicProto()`
+- Returns `JsonZerobusStream` instead of `ProtoZerobusStream<T>`
+- Pass JSON `String` to `ingest()` instead of protobuf `Message`
+- JSON must match the table schema defined in Unity Catalog
+- No protobuf schema or compilation required
+
+### Batch Ingestion
+
+For improved throughput, use `ingestBatch()` to send multiple records in a single request:
+
+```java
+// Batch ingestion with proto records
+List<AirQuality> batch = new ArrayList<>();
+for (int i = 0; i < 100; i++) {
+    batch.add(AirQuality.newBuilder()
+        .setDeviceName("sensor-" + i)
+        .setTemp(20 + (i % 15))
+        .setHumidity(50 + (i % 40))
+        .build());
+}
+
+Long offsetId = stream.ingestBatch(MessageBatch.of(batch));
+if (offsetId != null) {
+    stream.waitForOffset(offsetId);  // Wait for batch acknowledgment
+}
+```
+
+```java
+// Batch ingestion with JSON records
+List<String> jsonBatch = new ArrayList<>();
+for (int i = 0; i < 100; i++) {
+    jsonBatch.add(String.format(
+        "{\"device_name\": \"sensor-%d\", \"temp\": %d}",
+        i, 20 + (i % 15)
+    ));
+}
+
+Long offsetId = jsonStream.ingestBatch(StringBatch.of(jsonBatch));
+if (offsetId != null) {
+    jsonStream.waitForOffset(offsetId);
+}
+```
+
+**Benefits of batch ingestion:**
+- Reduced network overhead - one request per batch instead of per record
+- Atomic acknowledgment - entire batch succeeds or fails together
+- Higher throughput for bulk data loads
+
+### Using Custom Headers Provider
+
+The SDK supports custom authentication strategies through the `HeadersProvider` interface. This is useful when you need custom authentication logic, want to add additional headers, or manage tokens externally.
+
+#### Implementing Custom HeadersProvider
+
+You can implement the `HeadersProvider` interface to create custom authentication strategies or add additional headers:
+
+```java
+public class CustomHeadersProvider implements HeadersProvider {
+    private final OAuthHeadersProvider oauthProvider;
+
+    public CustomHeadersProvider(String tableName, String workspaceId,
+                                String workspaceUrl, String clientId,
+                                String clientSecret) {
+        this.oauthProvider = new OAuthHeadersProvider(
+            tableName, workspaceId, workspaceUrl, clientId, clientSecret);
+    }
+
+    @Override
+    public Map<String, String> getHeaders() throws NonRetriableException {
+        // Get standard OAuth headers
+        Map<String, String> headers = new HashMap<>(oauthProvider.getHeaders());
+
+        // Add custom headers
+        headers.put("x-custom-client-version", "1.0.0");
+        headers.put("x-custom-environment", "production");
+        headers.put("x-custom-request-id", UUID.randomUUID().toString());
+
+        return headers;
+    }
+}
+
+// Use custom provider with the builder API
+HeadersProvider customProvider = new CustomHeadersProvider(
+    "catalog.schema.table", "workspace-id",
+    "https://your-workspace.cloud.databricks.com",
+    "client-id", "client-secret"
+);
+
+ProtoZerobusStream<AirQuality> stream = sdk.streamBuilder(tableName)
+    .clientCredentials(clientId, clientSecret)
+    .headersProvider(customProvider)  // Custom headers provider
+    .compiledProto(AirQuality.getDefaultInstance())
+    .build()
+    .join();
+```
+
+**Benefits of using HeadersProvider:**
+- Flexible authentication strategies beyond OAuth
+- Add custom headers to all gRPC requests
+- Integrate with external token management systems
+- Centralize authentication logic
+
+**Note:** The `getHeaders()` method is called synchronously when creating or recreating a stream. Make sure your implementation is thread-safe if using the same provider instance across multiple streams.
 
 ## Configuration
 
@@ -617,14 +750,16 @@ try {
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `maxInflightRecords` | 50000 | Maximum number of unacknowledged records |
+| `maxInflightRequests` | 50000 | Maximum number of unacknowledged requests |
 | `recovery` | true | Enable automatic stream recovery |
 | `recoveryTimeoutMs` | 15000 | Timeout for recovery operations (ms) |
 | `recoveryBackoffMs` | 2000 | Delay between recovery attempts (ms) |
 | `recoveryRetries` | 3 | Maximum number of recovery attempts |
 | `flushTimeoutMs` | 300000 | Timeout for flush operations (ms) |
 | `serverLackOfAckTimeoutMs` | 60000 | Server acknowledgment timeout (ms) |
-| `ackCallback` | None | Callback invoked on record acknowledgment |
+| `maxMessageSizeBytes` | 10MB | Maximum message size (server enforces 10MB limit) |
+| `recordType` | PROTO | Record type: `PROTO` or `JSON` |
+| `offsetCallback` | None | Callback invoked on offset acknowledgment |
 
 ## Logging
 
@@ -739,14 +874,20 @@ At the **ERROR** level, the SDK logs:
 
 ## Error Handling
 
+The SDK uses **unchecked exceptions** (extending `RuntimeException`), following modern Java SDK conventions (AWS SDK v2, Google Cloud, etc.). This means you don't need to declare `throws` or wrap every call in try/catch, but you can still handle exceptions when needed.
+
 The SDK throws two types of exceptions:
 
 - `ZerobusException`: Retriable errors (e.g., network issues, temporary server errors)
-- `NonRetriableException`: Non-retriable errors (e.g., invalid credentials, missing table)
+- `NonRetriableException`: Non-retriable errors (e.g., invalid credentials, missing table, schema mismatch)
 
 ```java
+// Simple usage - let exceptions propagate
+stream.ingest(record);  // No throws declaration needed
+
+// Explicit error handling when needed
 try {
-    stream.ingestRecord(record);
+    stream.ingest(record);
 } catch (NonRetriableException e) {
     // Fatal error - do not retry
     logger.error("Non-retriable error: " + e.getMessage());
@@ -762,7 +903,7 @@ try {
 
 ### ZerobusSdk
 
-Main entry point for the SDK.
+Main entry point for the SDK. Implements `AutoCloseable` for optional resource cleanup.
 
 **Constructor:**
 ```java
@@ -770,6 +911,14 @@ ZerobusSdk(String serverEndpoint, String unityCatalogEndpoint)
 ```
 - `serverEndpoint` - The Zerobus gRPC endpoint (e.g., `<workspace-id>.zerobus.region.cloud.databricks.com`)
 - `unityCatalogEndpoint` - The Unity Catalog endpoint (your workspace URL)
+
+**Builder:**
+```java
+ZerobusSdk.builder(String serverEndpoint, String unityCatalogEndpoint)
+    .executor(ExecutorService executor)  // optional custom executor
+    .build()
+```
+Creates an SDK instance with custom configuration. If no executor is provided, a cached thread pool is used.
 
 **Methods:**
 
@@ -793,11 +942,392 @@ Creates a new ingestion stream with custom configuration. Returns a CompletableF
 Creates a new ingestion stream with default configuration. Returns a CompletableFuture that completes when the stream is ready.
 
 ```java
+<RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>> createStream(
+    TableProperties<RecordType> tableProperties,
+    String clientId,
+    String clientSecret,
+    StreamConfigurationOptions options,
+    HeadersProvider headersProvider
+)
+```
+Creates a new ingestion stream. If `headersProvider` is null, automatically creates an `OAuthHeadersProvider` using the provided credentials. Returns a CompletableFuture that completes when the stream is ready.
+
+```java
 <RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>> recreateStream(
     ZerobusStream<RecordType> stream
 )
 ```
-Recreates a failed stream, resending unacknowledged records. Returns a CompletableFuture that completes when the stream is ready.
+Recreates a failed stream, resending unacknowledged records. Uses the same authentication method (OAuth or custom headers provider) as the original stream. Returns a CompletableFuture that completes when the stream is ready.
+
+```java
+void close()
+```
+Closes the SDK and releases resources (gRPC channel and thread pool). Optional - daemon threads ensure cleanup on JVM shutdown even without explicit close. Can be used with try-with-resources.
+
+```java
+StreamBuilder streamBuilder(String tableName)
+```
+Creates a new builder for configuring and creating a stream. This is the preferred way to create streams with compile-time type safety.
+
+```java
+static String getVersion()
+```
+Returns the current SDK version string (e.g., `"0.2.0"`).
+
+**Constants:**
+
+```java
+public static final String VERSION = "0.2.0"
+```
+The current SDK version.
+
+---
+
+### StreamBuilder
+
+Step builder for creating streams with compile-time type safety. You must call either `clientCredentials()` (for OAuth) or `unauthenticated()` (for custom auth) to get a configurable builder.
+
+**Methods:**
+
+```java
+AuthenticatedStreamBuilder clientCredentials(String clientId, String clientSecret)
+```
+Sets OAuth client credentials. Returns `AuthenticatedStreamBuilder` for configuration and schema selection. This is the most common authentication method.
+
+```java
+UnauthenticatedStreamBuilder unauthenticated()
+```
+Returns `UnauthenticatedStreamBuilder` for custom authentication. Use `headersProvider()` to set custom authentication headers.
+
+---
+
+### AuthenticatedStreamBuilder / UnauthenticatedStreamBuilder
+
+Both builders provide the same configuration and schema selection methods. The difference is that `AuthenticatedStreamBuilder` has OAuth credentials configured, while `UnauthenticatedStreamBuilder` does not.
+
+**Configuration Methods:**
+
+```java
+headersProvider(HeadersProvider headersProvider)
+```
+Sets a custom headers provider for adding headers to gRPC requests.
+
+```java
+tlsConfig(TlsConfig tlsConfig)
+```
+Sets custom TLS configuration. Optional - defaults to secure TLS.
+
+```java
+maxInflightRequests(int maxInflightRequests)
+```
+Sets maximum in-flight requests. Must be positive.
+
+```java
+recovery(boolean recovery)
+```
+Enables/disables automatic recovery.
+
+```java
+recoveryTimeoutMs(int recoveryTimeoutMs)
+```
+Sets recovery timeout in milliseconds. Must be non-negative.
+
+```java
+recoveryBackoffMs(int recoveryBackoffMs)
+```
+Sets backoff between recovery attempts. Must be non-negative.
+
+```java
+recoveryRetries(int recoveryRetries)
+```
+Sets maximum recovery attempts. Must be non-negative.
+
+```java
+flushTimeoutMs(int flushTimeoutMs)
+```
+Sets flush timeout in milliseconds. Must be non-negative.
+
+```java
+serverLackOfAckTimeoutMs(int serverLackOfAckTimeoutMs)
+```
+Sets server acknowledgment timeout. Must be positive.
+
+```java
+maxMessageSizeBytes(int maxMessageSizeBytes)
+```
+Sets maximum message size in bytes. Must be positive.
+
+```java
+offsetCallback(LongConsumer offsetCallback)
+```
+Sets callback for offset acknowledgments.
+
+**Schema Selection Methods:**
+
+```java
+<T extends Message> ProtoStreamBuilder<T> compiledProto(T defaultInstance)
+```
+Configures for compiled protobuf records. Returns a builder that produces `ProtoZerobusStream<T>`.
+
+```java
+ProtoStreamBuilder<DynamicMessage> dynamicProto(Descriptors.Descriptor descriptor)
+```
+Configures for dynamic protobuf records. Returns a builder that produces `ProtoZerobusStream<DynamicMessage>`.
+
+```java
+JsonStreamBuilder json()
+```
+Configures for JSON records. Returns a builder that produces `JsonZerobusStream`.
+
+---
+
+### ProtoZerobusStream\<T\>
+
+Type-safe stream for protobuf record ingestion. Implements `AutoCloseable`.
+
+**Methods:**
+
+```java
+long ingest(T record) throws ZerobusException
+```
+Ingests a single protobuf record. Type-safe - only accepts records of type `T`.
+
+```java
+long ingest(byte[] bytes) throws ZerobusException
+```
+Ingests pre-serialized protobuf bytes. Useful when receiving data from Kafka or other systems that already have serialized protobuf.
+
+```java
+Long ingestBatch(MessageBatch<T> messageBatch) throws ZerobusException
+```
+Ingests a batch of protobuf records. Returns offset ID or null if empty. Use `MessageBatch.of(recordsList)` to create the batch wrapper.
+
+```java
+Long ingestBatch(BytesBatch bytesBatch) throws ZerobusException
+```
+Ingests a batch of pre-serialized protobuf bytes. Returns offset ID or null if empty. Use `BytesBatch.of(bytesList)` to create the batch wrapper.
+
+```java
+void waitForOffset(long offset) throws ZerobusException
+```
+Blocks until the offset is acknowledged.
+
+```java
+void flush() throws ZerobusException
+```
+Flushes all pending records.
+
+```java
+void close() throws ZerobusException
+```
+Flushes and closes the stream.
+
+```java
+String getStreamId()
+```
+Returns the server-assigned stream ID.
+
+```java
+StreamState getState()
+```
+Returns current stream state.
+
+---
+
+### JsonZerobusStream
+
+Type-safe stream for JSON record ingestion. Implements `AutoCloseable`.
+
+**Methods:**
+
+```java
+long ingest(String jsonRecord) throws ZerobusException
+```
+Ingests a single JSON record string.
+
+```java
+long ingest(Map<String, ?> record) throws ZerobusException
+```
+Ingests a Map that is automatically serialized to JSON. Supports nested Maps, Lists, Strings, Numbers, Booleans, and null values.
+
+```java
+Long ingestBatch(StringBatch stringBatch) throws ZerobusException
+```
+Ingests a batch of JSON records. Returns offset ID or null if empty. Use `StringBatch.of(jsonStringsList)` to create the batch wrapper.
+
+```java
+Long ingestBatch(MapBatch mapBatch) throws ZerobusException
+```
+Ingests a batch of Maps, each serialized to JSON. Returns offset ID or null if empty. Use `MapBatch.of(mapsList)` to create the batch wrapper.
+
+```java
+void waitForOffset(long offset) throws ZerobusException
+```
+Blocks until the offset is acknowledged.
+
+```java
+void flush() throws ZerobusException
+```
+Flushes all pending records.
+
+```java
+void close() throws ZerobusException
+```
+Flushes and closes the stream.
+
+```java
+String getStreamId()
+```
+Returns the server-assigned stream ID.
+
+```java
+StreamState getState()
+```
+Returns current stream state.
+
+---
+
+### MessageBatch\<T\>
+
+Wrapper for a batch of protobuf message records. Used with `ProtoZerobusStream.ingestBatch()` to provide a consistent API.
+
+**Factory Methods:**
+
+```java
+static <T extends Message> MessageBatch<T> of(Iterable<T> records)
+```
+Creates a MessageBatch from an iterable of protobuf messages.
+
+```java
+static <T extends Message> MessageBatch<T> of(T... records)
+```
+Creates a MessageBatch from varargs protobuf messages.
+
+**Example:**
+```java
+List<MyRecord> records = new ArrayList<>();
+records.add(MyRecord.newBuilder().setField("value1").build());
+records.add(MyRecord.newBuilder().setField("value2").build());
+Long offset = stream.ingestBatch(MessageBatch.of(records));
+```
+
+---
+
+### BytesBatch
+
+Wrapper for a batch of pre-serialized protobuf byte arrays. Used with `ProtoZerobusStream.ingestBatch()` to provide a consistent API.
+
+**Factory Methods:**
+
+```java
+static BytesBatch of(Iterable<byte[]> bytes)
+```
+Creates a BytesBatch from an iterable of byte arrays.
+
+```java
+static BytesBatch of(byte[]... bytes)
+```
+Creates a BytesBatch from varargs byte arrays.
+
+**Example:**
+```java
+List<byte[]> serializedRecords = getSerializedRecordsFromKafka();
+Long offset = stream.ingestBatch(BytesBatch.of(serializedRecords));
+```
+
+---
+
+### StringBatch
+
+Wrapper for a batch of string records. Used with `JsonZerobusStream.ingestBatch()` to provide a consistent API.
+
+**Factory Methods:**
+
+```java
+static StringBatch of(Iterable<String> records)
+```
+Creates a StringBatch from an iterable of strings.
+
+```java
+static StringBatch of(String... records)
+```
+Creates a StringBatch from varargs strings.
+
+**Example:**
+```java
+List<String> records = new ArrayList<>();
+records.add("{\"name\": \"Alice\", \"age\": 30}");
+records.add("{\"name\": \"Bob\", \"age\": 25}");
+Long offset = stream.ingestBatch(StringBatch.of(records));
+```
+
+---
+
+### MapBatch
+
+Wrapper for a batch of Map records to be serialized as JSON. Used with `JsonZerobusStream.ingestBatch()` to provide a consistent API.
+
+**Factory Methods:**
+
+```java
+static MapBatch of(Iterable<Map<String, ?>> maps)
+```
+Creates a MapBatch from an iterable of Maps.
+
+```java
+static MapBatch of(Map<String, ?>... maps)
+```
+Creates a MapBatch from varargs Maps.
+
+**Example:**
+```java
+List<Map<String, Object>> records = new ArrayList<>();
+records.add(createRecord("sensor-1", 25));
+records.add(createRecord("sensor-2", 30));
+Long offset = stream.ingestBatch(MapBatch.of(records));
+```
+
+---
+
+### HeadersProvider
+
+Interface for providing custom headers for gRPC stream authentication and configuration.
+
+**Methods:**
+
+```java
+Map<String, String> getHeaders() throws NonRetriableException
+```
+Returns headers to be attached to gRPC requests. Called when creating or recreating a stream.
+
+---
+
+### OAuthHeadersProvider
+
+Default implementation of `HeadersProvider` that uses OAuth 2.0 Client Credentials flow with Unity Catalog privileges.
+
+**Constructor:**
+```java
+OAuthHeadersProvider(
+    String tableName,
+    String workspaceId,
+    String workspaceUrl,
+    String clientId,
+    String clientSecret
+)
+```
+- `tableName` - Fully qualified table name (catalog.schema.table)
+- `workspaceId` - Databricks workspace ID
+- `workspaceUrl` - Unity Catalog endpoint URL
+- `clientId` - OAuth client ID
+- `clientSecret` - OAuth client secret
+
+**Methods:**
+
+```java
+Map<String, String> getHeaders() throws NonRetriableException
+```
+Fetches a fresh OAuth token and returns headers containing authorization and table name.
 
 ---
 
@@ -808,9 +1338,19 @@ Represents an active ingestion stream.
 **Methods:**
 
 ```java
-CompletableFuture<Void> ingestRecord(RecordType record) throws ZerobusException
+long ingest(Object record) throws ZerobusException
 ```
-Ingests a single record into the stream. Returns a future that completes when the record is durably written to storage.
+Ingests a single record into the stream. Accepts both protobuf `Message` objects and JSON `String` objects based on stream configuration. Returns the logical offset ID immediately. Use `waitForOffset(long)` to wait for server acknowledgment.
+
+```java
+Long ingestBatch(Iterable<?> records) throws ZerobusException
+```
+Ingests a batch of records into the stream. All records must match the stream's configured record type. The batch is assigned a single offset ID and acknowledged atomically. Returns the offset ID for the batch, or `null` if empty.
+
+```java
+void waitForOffset(long offset) throws ZerobusException
+```
+Blocks until the specified offset is acknowledged by the server. Use with `ingest()`/`ingestBatch()` for explicit acknowledgment control.
 
 ```java
 void flush() throws ZerobusException
@@ -894,7 +1434,7 @@ Builder for creating `StreamConfigurationOptions`.
 **Methods:**
 
 ```java
-StreamConfigurationOptionsBuilder setMaxInflightRecords(int maxInflightRecords)
+StreamConfigurationOptionsBuilder setMaxInflightRequests(int maxInflightRecords)
 ```
 Sets the maximum number of unacknowledged records (default: 50000).
 
@@ -929,9 +1469,19 @@ StreamConfigurationOptionsBuilder setServerLackOfAckTimeoutMs(int serverLackOfAc
 Sets the server acknowledgment timeout in milliseconds (default: 60000).
 
 ```java
-StreamConfigurationOptionsBuilder setAckCallback(Consumer<IngestRecordResponse> ackCallback)
+StreamConfigurationOptionsBuilder setMaxMessageSizeBytes(int maxMessageSizeBytes)
 ```
-Sets a callback to be invoked when records are acknowledged by the server.
+Sets the maximum message size in bytes. Default is 10MB (`DEFAULT_MAX_MESSAGE_SIZE_BYTES`). Server enforces 10MB limit - messages exceeding this will be rejected.
+
+```java
+StreamConfigurationOptionsBuilder setRecordType(RecordType recordType)
+```
+Sets the record type for the stream: `RecordType.PROTO` (default) for protobuf records, or `RecordType.JSON` for JSON records.
+
+```java
+StreamConfigurationOptionsBuilder setOffsetCallback(LongConsumer offsetCallback)
+```
+Sets a callback to be invoked when records are acknowledged. The callback receives the durability offset ID.
 
 ```java
 StreamConfigurationOptions build()
@@ -969,7 +1519,7 @@ Represents the lifecycle state of a stream.
 
 ### ZerobusException
 
-Base exception for retriable errors.
+Base exception for retriable errors. Extends `RuntimeException` (unchecked), so no `throws` declaration is required.
 
 **Constructors:**
 ```java
@@ -981,7 +1531,7 @@ ZerobusException(String message, Throwable cause)
 
 ### NonRetriableException
 
-Exception for non-retriable errors (extends `ZerobusException`).
+Exception for non-retriable errors such as invalid credentials, missing table, or schema mismatch. Extends `ZerobusException` (and therefore also `RuntimeException`).
 
 **Constructors:**
 ```java
@@ -997,4 +1547,4 @@ NonRetriableException(String message, Throwable cause)
 4. **Error handling**: Implement proper retry logic for retriable errors
 5. **Monitoring**: Use `ackCallback` to track ingestion progress
 6. **Token refresh**: Tokens are automatically refreshed on stream creation and recovery
-7. **Proto generation**: Use the built-in `GenerateProto` tool to automatically generate proto files from your table schemas
+7. **Proto generation**: Use the Zerobus CLI tool (`zerobus-cli-0.1.0.jar`) to automatically generate proto files from your table schemas

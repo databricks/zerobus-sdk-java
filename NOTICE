@@ -23,10 +23,34 @@ Copyright 2014 The Netty Project
 https://github.com/netty/netty
 License: https://github.com/netty/netty/blob/4.1/LICENSE.txt
 
+### Guava
+Copyright Google LLC
+https://github.com/google/guava
+License: https://github.com/google/guava/blob/master/LICENSE
+
+### Perfmark
+Copyright 2019 Google LLC
+https://github.com/perfmark/perfmark
+License: https://github.com/perfmark/perfmark/blob/master/LICENSE
+
+### Error Prone Annotations
+Copyright Google LLC
+https://github.com/google/error-prone
+License: https://github.com/google/error-prone/blob/master/LICENSE
+
+## MIT License
+
 ### SLF4J
-Copyright (c) 2004-2017 QOS.ch
+Copyright (c) 2004-2023 QOS.ch
 https://github.com/qos-ch/slf4j
-License: https://github.com/qos-ch/slf4j/blob/master/LICENSE.txt
+License: https://www.slf4j.org/license.html
+
+## BSD 3-Clause License
+
+### JSR-305 Annotations
+Copyright JSR-305 Expert Group
+https://github.com/findbugsproject/findbugs
+License: https://opensource.org/licenses/BSD-3-Clause
 
 ## CDDL + GPLv2 with classpath exception
 

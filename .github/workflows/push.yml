@@ -1,10 +1,15 @@
 name: build
 
 on:
+  push:
+    branches: [main]
   pull_request:
     types: [opened, synchronize]
   merge_group:
     types: [checks_requested]
+
+permissions:
+  contents: write
 
 jobs:
   tests-ubuntu:
@@ -51,3 +56,40 @@ jobs:
         run: |
           echo "Code formatting issues detected. Run 'mvn spotless:apply' to fix."
           exit 1
+
+  update-coverage-badge:
+    needs: [tests-ubuntu]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on:
+      group: databricks-protected-runner-group
+      labels: linux-ubuntu-latest
+    steps:
+      - name: Checkout badges branch
+        uses: actions/checkout@v4
+        with:
+          ref: badges
+          fetch-depth: 0
+
+      - name: Create badges branch if it doesn't exist
+        run: |
+          if ! git rev-parse --verify badges >/dev/null 2>&1; then
+            git checkout --orphan badges
+            git rm -rf . || true
+            mkdir -p .github/badges
+            git commit --allow-empty -m "Initialize badges branch"
+            git push origin badges
+          fi
+
+      - name: Download badge artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-badge
+          path: .github/badges
+
+      - name: Commit and push badge
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/badges/jacoco.svg
+          git diff --staged --quiet || git commit -m "Update coverage badge"
+          git push origin badges

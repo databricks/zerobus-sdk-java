@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.databricks</groupId>
+    <artifactId>zerobus-java-parent</artifactId>
+    <version>0.2.0</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+  <artifactId>zerobus-examples</artifactId>
+  <packaging>jar</packaging>
+  <name>Zerobus SDK Examples</name>
+  <description>Example code for Databricks Zerobus Ingest SDK</description>
+
+  <dependencies>
+    <!-- Zerobus SDK -->
+    <dependency>
+      <groupId>com.databricks</groupId>
+      <artifactId>zerobus-ingest-sdk</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <!-- Protocol Buffers (for compiled proto examples) -->
+    <dependency>
+      <groupId>com.google.protobuf</groupId>
+      <artifactId>protobuf-java</artifactId>
+    </dependency>
+    <!-- SLF4J Simple for logging output in examples -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <!-- Protobuf compilation for Record.proto -->
+      <plugin>
+        <groupId>org.xolstice.maven.plugins</groupId>
+        <artifactId>protobuf-maven-plugin</artifactId>
+        <version>0.6.1</version>
+        <configuration>
+          <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}</protocArtifact>
+        </configuration>
+        <executions>
+          <execution>
+            <id>compile-protobuf</id>
+            <goals>
+              <goal>compile</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+      </plugin>
+      <!-- Exec plugin for running examples -->
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>exec-maven-plugin</artifactId>
+        <version>3.1.0</version>
+        <configuration>
+          <classpathScope>compile</classpathScope>
+        </configuration>
+      </plugin>
+    </plugins>
+    <extensions>
+      <extension>
+        <groupId>kr.motd.maven</groupId>
+        <artifactId>os-maven-plugin</artifactId>
+        <version>1.7.1</version>
+      </extension>
+    </extensions>
+  </build>
+</project>

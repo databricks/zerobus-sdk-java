@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>com.databricks</groupId>
+    <artifactId>zerobus-java-parent</artifactId>
+    <version>0.2.0</version>
+  </parent>
+
+  <artifactId>zerobus-cli</artifactId>
+  <version>0.1.0</version>
+  <packaging>jar</packaging>
+  <name>Zerobus CLI</name>
+  <description>Command-line tools for Databricks Zerobus - Generate proto schemas from Unity Catalog tables</description>
+  <url>https://github.com/databricks/zerobus-sdk-java</url>
+
+  <dependencies>
+    <!-- Zerobus Common (HTTP client and JSON utilities) -->
+    <dependency>
+      <groupId>com.databricks</groupId>
+      <artifactId>zerobus-common</artifactId>
+      <version>${project.parent.version}</version>
+    </dependency>
+    <!-- SLF4J Simple for CLI logging -->
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+    </dependency>
+    <!-- Test dependencies -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter-engine</artifactId>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+      </plugin>
+      <!-- JaCoCo for code coverage -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>0.8.11</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <goals>
+              <goal>report</goal>
+            </goals>
+            <phase>test</phase>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+          <archive>
+            <manifest>
+              <mainClass>com.databricks.zerobus.cli.Main</mainClass>
+            </manifest>
+          </archive>
+        </configuration>
+      </plugin>
+      <!-- Maven Shade Plugin for creating executable JAR with all dependencies -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-shade-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>shade</goal>
+            </goals>
+            <phase>package</phase>
+            <configuration>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
+              <!-- Relocate dependencies to avoid classpath conflicts -->
+              <relocations>
+                <!-- Protobuf -->
+                <relocation>
+                  <pattern>com.google.protobuf</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.protobuf</shadedPattern>
+                </relocation>
+                <!-- gRPC -->
+                <relocation>
+                  <pattern>io.grpc</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.grpc</shadedPattern>
+                </relocation>
+                <!-- Guava -->
+                <relocation>
+                  <pattern>com.google.common</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.guava</shadedPattern>
+                </relocation>
+                <!-- Perfmark -->
+                <relocation>
+                  <pattern>io.perfmark</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.perfmark</shadedPattern>
+                </relocation>
+                <!-- Error Prone annotations -->
+                <relocation>
+                  <pattern>com.google.errorprone</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.errorprone</shadedPattern>
+                </relocation>
+                <!-- Google API protos -->
+                <relocation>
+                  <pattern>com.google.api</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.api</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.rpc</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.rpc</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.type</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.type</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.cloud</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.cloud</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.logging</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.logging</shadedPattern>
+                </relocation>
+                <relocation>
+                  <pattern>com.google.longrunning</pattern>
+                  <shadedPattern>com.databricks.zerobus.shaded.google.longrunning</shadedPattern>
+                </relocation>
+              </relocations>
+              <transformers>
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                  <manifestEntries>
+                    <Implementation-Title>${project.name}</Implementation-Title>
+                    <Implementation-Version>${project.version}</Implementation-Version>
+                    <Main-Class>com.databricks.zerobus.cli.Main</Main-Class>
+                  </manifestEntries>
+                </transformer>
+                <!-- Handle META-INF/services for gRPC -->
+                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+              </transformers>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                    <exclude>META-INF/MANIFEST.MF</exclude>
+                    <exclude>META-INF/LICENSE.txt</exclude>
+                    <exclude>META-INF/versions/9/module-info.class</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+  </build>
+</project>
