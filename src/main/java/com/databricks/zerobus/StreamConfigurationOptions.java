@@ -11,9 +11,20 @@ import java.util.function.Consumer;
  *
  * <p>Use the builder pattern to create instances:
  *
- * <p>StreamConfigurationOptions options = StreamConfigurationOptions.builder()
- * .setMaxInflightRecords(50000) .setRecovery(true) .setAckCallback(response ->
- * System.out.println("Acked: " + response.getDurabilityAckUpToOffset())) .build();
+ * <pre>{@code
+ * StreamConfigurationOptions options = StreamConfigurationOptions.builder()
+ *     .setMaxInflightRecords(50000)
+ *     .setRecovery(true)
+ *     .setAckCallback(new AckCallback() {
+ *         public void onAck(long offsetId) {
+ *             System.out.println("Acked offset: " + offsetId);
+ *         }
+ *         public void onError(long offsetId, String errorMessage) {
+ *             System.err.println("Error for offset " + offsetId + ": " + errorMessage);
+ *         }
+ *     })
+ *     .build();
+ * }</pre>
  */
 public class StreamConfigurationOptions {
 
@@ -25,6 +36,7 @@ public class StreamConfigurationOptions {
   private int flushTimeoutMs = 300000;
   private int serverLackOfAckTimeoutMs = 60000;
   private Optional<Consumer<IngestRecordResponse>> ackCallback = Optional.empty();
+  private Optional<AckCallback> newAckCallback = Optional.empty();
 
   private StreamConfigurationOptions() {}
 
@@ -36,7 +48,8 @@ public class StreamConfigurationOptions {
       int recoveryRetries,
       int flushTimeoutMs,
       int serverLackOfAckTimeoutMs,
-      Optional<Consumer<IngestRecordResponse>> ackCallback) {
+      Optional<Consumer<IngestRecordResponse>> ackCallback,
+      Optional<AckCallback> newAckCallback) {
     this.maxInflightRecords = maxInflightRecords;
     this.recovery = recovery;
     this.recoveryTimeoutMs = recoveryTimeoutMs;
@@ -45,6 +58,7 @@ public class StreamConfigurationOptions {
     this.flushTimeoutMs = flushTimeoutMs;
     this.serverLackOfAckTimeoutMs = serverLackOfAckTimeoutMs;
     this.ackCallback = ackCallback;
+    this.newAckCallback = newAckCallback;
   }
 
   /**
@@ -138,17 +152,41 @@ public class StreamConfigurationOptions {
    * this returns an empty Optional.
    *
    * @return the acknowledgment callback, or an empty Optional if none is set
+   * @deprecated This callback is no longer invoked by the native Rust backend. Use {@link
+   *     #getNewAckCallback()} instead, which provides working acknowledgment notifications.
    */
+  @Deprecated
   public Optional<Consumer<IngestRecordResponse>> ackCallback() {
     return this.ackCallback;
   }
 
   /**
+   * Returns the new-style acknowledgment callback.
+   *
+   * <p>This callback provides both success and error notifications. If no callback is set, this
+   * returns an empty Optional.
+   *
+   * @return the acknowledgment callback, or an empty Optional if none is set
+   */
+  public Optional<AckCallback> getNewAckCallback() {
+    return this.newAckCallback;
+  }
+
+  /**
    * Returns the default stream configuration options.
    *
-   * <p>Default values: - maxInflightRecords: 50000 - recovery: true - recoveryTimeoutMs: 15000 -
-   * recoveryBackoffMs: 2000 - recoveryRetries: 3 - flushTimeoutMs: 300000 -
-   * serverLackOfAckTimeoutMs: 60000 - ackCallback: empty
+   * <p>Default values:
+   *
+   * <ul>
+   *   <li>maxInflightRecords: 50000
+   *   <li>recovery: true
+   *   <li>recoveryTimeoutMs: 15000
+   *   <li>recoveryBackoffMs: 2000
+   *   <li>recoveryRetries: 3
+   *   <li>flushTimeoutMs: 300000
+   *   <li>serverLackOfAckTimeoutMs: 60000
+   *   <li>ackCallback: empty
+   * </ul>
    *
    * @return the default stream configuration options
    */
@@ -173,9 +211,16 @@ public class StreamConfigurationOptions {
    *
    * <p>Example usage:
    *
-   * <p>StreamConfigurationOptions options = StreamConfigurationOptions.builder()
-   * .setMaxInflightRecords(100000) .setRecovery(false) .setAckCallback(response ->
-   * System.out.println("Record acked: " + response.getDurabilityAckUpToOffset())) .build();
+   * <pre>{@code
+   * StreamConfigurationOptions options = StreamConfigurationOptions.builder()
+   *     .setMaxInflightRecords(100000)
+   *     .setRecovery(false)
+   *     .setAckCallback(new AckCallback() {
+   *         public void onAck(long offsetId) { ... }
+   *         public void onError(long offsetId, String errorMessage) { ... }
+   *     })
+   *     .build();
+   * }</pre>
    *
    * @see StreamConfigurationOptions
    * @since 1.0.0
@@ -191,6 +236,7 @@ public class StreamConfigurationOptions {
     private int flushTimeoutMs = defaultOptions.flushTimeoutMs;
     private int serverLackOfAckTimeoutMs = defaultOptions.serverLackOfAckTimeoutMs;
     private Optional<Consumer<IngestRecordResponse>> ackCallback = defaultOptions.ackCallback;
+    private Optional<AckCallback> newAckCallback = defaultOptions.newAckCallback;
 
     private StreamConfigurationOptionsBuilder() {}
 
@@ -296,16 +342,29 @@ public class StreamConfigurationOptions {
 
     /**
      * Sets the acknowledgment callback function.
-     *
-     * <p>This callback is invoked whenever the server acknowledges records. The callback receives
-     * an IngestRecordResponse containing information about the acknowledged records.
-     *
      * @param ackCallback the acknowledgment callback function
      * @return this builder for method chaining
+     * @deprecated This callback is no longer invoked by the native Rust backend. Use {@link
+     *     #setAckCallback(AckCallback)} instead, which provides working acknowledgment notifications.
      */
+    @Deprecated
     public StreamConfigurationOptionsBuilder setAckCallback(
         Consumer<IngestRecordResponse> ackCallback) {
       this.ackCallback = Optional.ofNullable(ackCallback);
+      return this;
+    }
+
+    /**
+     * Sets the acknowledgment callback.
+     *
+     * <p>This callback is invoked for both successful acknowledgments and errors. It provides more
+     * detailed feedback than the deprecated Consumer-based callback.
+     *
+     * @param ackCallback the acknowledgment callback
+     * @return this builder for method chaining
+     */
+    public StreamConfigurationOptionsBuilder setAckCallback(AckCallback ackCallback) {
+      this.newAckCallback = Optional.ofNullable(ackCallback);
       return this;
     }
 
@@ -323,7 +382,8 @@ public class StreamConfigurationOptions {
           this.recoveryRetries,
           this.flushTimeoutMs,
           this.serverLackOfAckTimeoutMs,
-          this.ackCallback);
+          this.ackCallback,
+          this.newAckCallback);
     }
   }
 }
