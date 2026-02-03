@@ -342,10 +342,12 @@ public class StreamConfigurationOptions {
 
     /**
      * Sets the acknowledgment callback function.
+     *
      * @param ackCallback the acknowledgment callback function
      * @return this builder for method chaining
      * @deprecated This callback is no longer invoked by the native Rust backend. Use {@link
-     *     #setAckCallback(AckCallback)} instead, which provides working acknowledgment notifications.
+     *     #setAckCallback(AckCallback)} instead, which provides working acknowledgment
+     *     notifications.
      */
     @Deprecated
     public StreamConfigurationOptionsBuilder setAckCallback(

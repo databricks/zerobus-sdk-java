@@ -830,7 +830,8 @@ public class IntegrationTest {
     assertNotNull(rawRecords);
     assertTrue(rawRecords.isEmpty(), "Should be empty after successful close");
 
-    System.out.println("EncodedBatch test: " + totalRecords + " records ingested, 0 unacked after close");
+    System.out.println(
+        "EncodedBatch test: " + totalRecords + " records ingested, 0 unacked after close");
   }
 
   // ===================================================================================

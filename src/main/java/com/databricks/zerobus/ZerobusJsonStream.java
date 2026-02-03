@@ -107,9 +107,7 @@ public class ZerobusJsonStream extends BaseZerobusStream {
   private final String clientId;
   private final String clientSecret;
 
-  /**
-   * Package-private constructor. Use {@link ZerobusSdk#createJsonStream} to create instances.
-   */
+  /** Package-private constructor. Use {@link ZerobusSdk#createJsonStream} to create instances. */
   ZerobusJsonStream(
       long nativeHandle,
       String tableName,

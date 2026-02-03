@@ -47,9 +47,7 @@ public class ZerobusProtoStream extends BaseZerobusStream {
   private final String clientId;
   private final String clientSecret;
 
-  /**
-   * Package-private constructor. Use {@link ZerobusSdk#createProtoStream} to create instances.
-   */
+  /** Package-private constructor. Use {@link ZerobusSdk#createProtoStream} to create instances. */
   ZerobusProtoStream(
       long nativeHandle,
       String tableName,

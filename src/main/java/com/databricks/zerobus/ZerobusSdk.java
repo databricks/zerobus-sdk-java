@@ -210,10 +210,7 @@ public class ZerobusSdk {
    * @return A CompletableFuture that completes with the ZerobusJsonStream when the stream is ready.
    */
   public CompletableFuture<ZerobusJsonStream> createJsonStream(
-      String tableName,
-      String clientId,
-      String clientSecret,
-      StreamConfigurationOptions options) {
+      String tableName, String clientId, String clientSecret, StreamConfigurationOptions options) {
 
     ensureOpen();
 
@@ -457,9 +454,8 @@ public class ZerobusSdk {
    * @deprecated Use {@link #recreateStream(ZerobusProtoStream)} instead.
    */
   @Deprecated
-  public <RecordType extends Message>
-      CompletableFuture<ZerobusStream<RecordType>> recreateStream(
-          ZerobusStream<RecordType> closedStream) {
+  public <RecordType extends Message> CompletableFuture<ZerobusStream<RecordType>> recreateStream(
+      ZerobusStream<RecordType> closedStream) {
     if (!closedStream.isClosed()) {
       throw new IllegalStateException("Stream must be closed before recreation");
     }
