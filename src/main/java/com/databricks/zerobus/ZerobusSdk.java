@@ -15,35 +15,55 @@ import org.slf4j.LoggerFactory;
  * <p>The SDK uses a native Rust implementation via JNI for optimal performance. The native library
  * is loaded automatically when the SDK is first used.
  *
- * <p>Example usage:
+ * <h3>Resource Management</h3>
+ *
+ * <p>This class holds native resources that are not automatically released by the garbage
+ * collector. You <b>must</b> call {@link #close()} when done to avoid native memory leaks. Use
+ * try-with-resources for automatic cleanup:
  *
  * <pre>{@code
- * ZerobusSdk sdk = new ZerobusSdk(
- *     "server-endpoint.databricks.com",
- *     "https://workspace.databricks.com"
- * );
+ * try (ZerobusSdk sdk = new ZerobusSdk(serverEndpoint, unityCatalogEndpoint)) {
+ *     // Use the SDK
+ * }
+ * }</pre>
  *
- * // For JSON ingestion (recommended):
- * ZerobusJsonStream jsonStream = sdk.createJsonStream(
- *     "catalog.schema.table",
- *     clientId,
- *     clientSecret
- * ).join();
+ * <h3>Thread Safety</h3>
  *
- * // For Protocol Buffer ingestion:
- * ZerobusProtoStream protoStream = sdk.createProtoStream(
- *     "catalog.schema.table",
- *     descriptorProto,
- *     clientId,
- *     clientSecret
- * ).join();
+ * <p>This class is <b>not thread-safe</b>. Each instance should be used from a single thread, or
+ * external synchronization must be provided. Do not call {@link #close()} concurrently with other
+ * methods.
+ *
+ * <h3>Example Usage</h3>
+ *
+ * <pre>{@code
+ * try (ZerobusSdk sdk = new ZerobusSdk(
+ *         "server-endpoint.databricks.com",
+ *         "https://workspace.databricks.com")) {
+ *
+ *     // For JSON ingestion (recommended):
+ *     try (ZerobusJsonStream jsonStream = sdk.createJsonStream(
+ *             "catalog.schema.table",
+ *             clientId,
+ *             clientSecret).join()) {
+ *         jsonStream.ingestRecordOffset(myObject, gson::toJson);
+ *     }
+ *
+ *     // For Protocol Buffer ingestion:
+ *     try (ZerobusProtoStream protoStream = sdk.createProtoStream(
+ *             "catalog.schema.table",
+ *             descriptorProto,
+ *             clientId,
+ *             clientSecret).join()) {
+ *         protoStream.ingestRecordOffset(myProtoMessage);
+ *     }
+ * }
  * }</pre>
  *
  * @see ZerobusJsonStream
  * @see ZerobusProtoStream
  * @see StreamConfigurationOptions
  */
-public class ZerobusSdk {
+public class ZerobusSdk implements AutoCloseable {
   private static final Logger logger = LoggerFactory.getLogger(ZerobusSdk.class);
 
   // Ensure native library is loaded.
@@ -525,11 +545,6 @@ public class ZerobusSdk {
     if (nativeHandle == 0) {
       throw new IllegalStateException("SDK has been closed");
     }
-  }
-
-  @Override
-  protected void finalize() {
-    close();
   }
 
   // Native methods implemented in Rust

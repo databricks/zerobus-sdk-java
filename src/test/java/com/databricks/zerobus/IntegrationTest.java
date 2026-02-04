@@ -166,6 +166,7 @@ public class IntegrationTest {
       assertEquals(22, totalRecords);
     } finally {
       stream.close();
+      sdk.close();
     }
   }
 
@@ -260,6 +261,7 @@ public class IntegrationTest {
       assertEquals(220, totalRecords);
     } finally {
       stream.close();
+      sdk.close();
     }
   }
 
@@ -322,6 +324,7 @@ public class IntegrationTest {
       assertEquals(22, totalRecords);
     } finally {
       stream.close();
+      sdk.close();
     }
   }
 
@@ -405,6 +408,7 @@ public class IntegrationTest {
       assertEquals(220, totalRecords);
     } finally {
       stream.close();
+      sdk.close();
     }
   }
 
@@ -458,6 +462,7 @@ public class IntegrationTest {
       assertEquals(11, totalRecords);
     } finally {
       stream.close();
+      sdk.close();
     }
   }
 
@@ -507,6 +512,7 @@ public class IntegrationTest {
       assertEquals(11, totalRecords);
     } finally {
       stream.close();
+      sdk.close();
     }
   }
 
@@ -556,6 +562,7 @@ public class IntegrationTest {
       assertTrue(recordsPerSec > 100, "Throughput should be at least 100 rec/sec");
     } finally {
       stream.close();
+      sdk.close();
     }
   }
 
@@ -634,6 +641,7 @@ public class IntegrationTest {
       assertEquals(11, totalRecords);
     } finally {
       stream.close();
+      sdk.close();
     }
   }
 
@@ -699,6 +707,8 @@ public class IntegrationTest {
     assertTrue(batches.isEmpty(), "Should be empty after successful close");
 
     System.out.println("Proto unacked test: " + totalRecords + " ingested, 0 unacked after close");
+
+    sdk.close();
   }
 
   // ===================================================================================
@@ -754,6 +764,8 @@ public class IntegrationTest {
     assertTrue(batches.isEmpty(), "Should be empty after successful close");
 
     System.out.println("JSON unacked test: " + totalRecords + " ingested, 0 unacked after close");
+
+    sdk.close();
   }
 
   // ===================================================================================
@@ -832,6 +844,8 @@ public class IntegrationTest {
 
     System.out.println(
         "EncodedBatch test: " + totalRecords + " records ingested, 0 unacked after close");
+
+    sdk.close();
   }
 
   // ===================================================================================
@@ -907,6 +921,8 @@ public class IntegrationTest {
 
     System.out.println("RecreateStream proto: " + totalRecords + " records total");
     assertEquals(22, totalRecords);
+
+    sdk.close();
   }
 
   // ===================================================================================
@@ -971,6 +987,8 @@ public class IntegrationTest {
 
     System.out.println("RecreateStream JSON: " + totalRecords + " records total");
     assertEquals(22, totalRecords);
+
+    sdk.close();
   }
 
   // ===================================================================================
@@ -1060,6 +1078,8 @@ public class IntegrationTest {
 
     System.out.println("RecreateStream legacy: " + totalRecords + " records total");
     assertEquals(22, totalRecords);
+
+    sdk.close();
   }
 
   // ===================================================================================
@@ -1105,6 +1125,7 @@ public class IntegrationTest {
     } finally {
       stream1.close();
       stream2.close();
+      sdk.close();
     }
   }
 

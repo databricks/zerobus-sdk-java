@@ -172,5 +172,7 @@ public class BatchIngestionExample {
         }
 
         System.out.println("\n=== RecreateStream demo complete ===");
+
+        sdk.close();
     }
 }

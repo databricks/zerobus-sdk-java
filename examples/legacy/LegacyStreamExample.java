@@ -123,5 +123,7 @@ public class LegacyStreamExample {
         }
 
         System.out.println("\n=== RecreateStream demo complete ===");
+
+        sdk.close();
     }
 }

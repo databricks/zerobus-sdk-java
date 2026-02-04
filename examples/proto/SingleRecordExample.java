@@ -144,5 +144,7 @@ public class SingleRecordExample {
         }
 
         System.out.println("\n=== RecreateStream demo complete ===");
+
+        sdk.close();
     }
 }

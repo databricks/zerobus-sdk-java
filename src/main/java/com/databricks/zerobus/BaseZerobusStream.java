@@ -13,6 +13,23 @@ import org.slf4j.LoggerFactory;
  * <p>This class is not intended to be used directly. Use {@link ZerobusJsonStream} for JSON
  * ingestion, {@link ZerobusProtoStream} for Protocol Buffer ingestion, or the deprecated {@link
  * ZerobusStream} for backward compatibility.
+ *
+ * <h3>Resource Management</h3>
+ *
+ * <p>Streams hold native resources that are not automatically released by the garbage collector.
+ * You <b>must</b> call {@link #close()} when done to avoid native memory leaks. Use
+ * try-with-resources for automatic cleanup:
+ *
+ * <pre>{@code
+ * try (ZerobusJsonStream stream = sdk.createJsonStream(...).join()) {
+ *     stream.ingestRecordOffset(record);
+ * }
+ * }</pre>
+ *
+ * <h3>Thread Safety</h3>
+ *
+ * <p>Streams are <b>not thread-safe</b>. Each stream instance should be used from a single thread.
+ * Do not call methods on the same stream concurrently from multiple threads.
  */
 abstract class BaseZerobusStream implements AutoCloseable {
 
@@ -167,14 +184,6 @@ abstract class BaseZerobusStream implements AutoCloseable {
     }
     if (nativeIsClosed(nativeHandle)) {
       throw new ZerobusException("Stream is closed");
-    }
-  }
-
-  @Override
-  protected void finalize() {
-    if (nativeHandle != 0) {
-      nativeDestroy(nativeHandle);
-      nativeHandle = 0;
     }
   }
 
