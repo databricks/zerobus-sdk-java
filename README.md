@@ -505,6 +505,7 @@ public class ZerobusClient {
             System.out.println("Successfully ingested 100 records!");
         } finally {
             stream.close();
+            sdk.close();
         }
     }
 }
@@ -655,6 +656,7 @@ try {
     stream.waitForOffset(lastOffset);
 } finally {
     stream.close();
+    sdk.close();
 }
 ```
 
@@ -677,6 +679,7 @@ try {
     }
 } finally {
     stream.close();
+    sdk.close();
 }
 ```
 
@@ -734,6 +737,7 @@ try {
     batchOffset.ifPresent(stream::waitForOffset);
 } finally {
     stream.close();
+    sdk.close();
 }
 ```
 
