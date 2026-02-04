@@ -567,17 +567,15 @@ examples/
 ├── README.md              # Overview and comparison
 ├── proto/                 # ZerobusProtoStream examples
 │   ├── README.md
-│   ├── SingleRecordExample.java   (25 records)
-│   └── BatchIngestionExample.java (225 records)
+│   ├── SingleRecordExample.java
+│   └── BatchIngestionExample.java
 ├── json/                  # ZerobusJsonStream examples
 │   ├── README.md
-│   ├── SingleRecordExample.java   (25 records)
-│   └── BatchIngestionExample.java (225 records)
+│   ├── SingleRecordExample.java
+│   └── BatchIngestionExample.java
 └── legacy/                # ZerobusStream (deprecated)
-    └── LegacyStreamExample.java   (14 records)
+    └── LegacyStreamExample.java
 ```
-
-**Total: 514 records across all examples**
 
 ### Protocol Buffers Examples
 

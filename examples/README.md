@@ -31,17 +31,15 @@ examples/
 
 ## Examples Overview
 
-| Example | Stream Class | Records | Description |
-|---------|--------------|---------|-------------|
-| `proto/SingleRecordExample` | `ZerobusProtoStream` | 25 | 22 main (11 Message + 11 byte[]) + 3 recreateStream |
-| `proto/BatchIngestionExample` | `ZerobusProtoStream` | 225 | 220 main (11×10×2) + 5 recreateStream |
-| `json/SingleRecordExample` | `ZerobusJsonStream` | 25 | 22 main (11 Object + 11 String) + 3 recreateStream |
-| `json/BatchIngestionExample` | `ZerobusJsonStream` | 225 | 220 main (11×10×2) + 5 recreateStream |
-| `legacy/LegacyStreamExample` | `ZerobusStream` | 14 | 11 main + 3 recreateStream |
+| Example | Stream Class | Description |
+|---------|--------------|-------------|
+| `proto/SingleRecordExample` | `ZerobusProtoStream` | Single record ingestion (Message + byte[]) |
+| `proto/BatchIngestionExample` | `ZerobusProtoStream` | Batch ingestion |
+| `json/SingleRecordExample` | `ZerobusJsonStream` | Single record ingestion (Object + String) |
+| `json/BatchIngestionExample` | `ZerobusJsonStream` | Batch ingestion |
+| `legacy/LegacyStreamExample` | `ZerobusStream` | Legacy Future-based API |
 
-**Total: 514 records**
-
-Each example follows the pattern: 1 record/batch + wait, then 10 records/batches + wait for last, plus recreateStream demo.
+Each example demonstrates: single ingestion + wait, batch ingestion + wait for last, and recreateStream.
 
 ## Stream Classes
 
@@ -136,11 +134,11 @@ javac -d . -cp "../target/classes:$(cd .. && mvn dependency:build-classpath -q -
   proto/SingleRecordExample.java \
   proto/BatchIngestionExample.java
 
-# Run single record example (25 records)
+# Run single record example
 java -cp ".:../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
   com.databricks.zerobus.examples.proto.SingleRecordExample
 
-# Run batch example (225 records)
+# Run batch example
 java -cp ".:../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
   com.databricks.zerobus.examples.proto.BatchIngestionExample
 ```
@@ -155,11 +153,11 @@ javac -d . -cp "../target/classes:$(cd .. && mvn dependency:build-classpath -q -
   json/SingleRecordExample.java \
   json/BatchIngestionExample.java
 
-# Run single record example (25 records)
+# Run single record example
 java -cp ".:../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
   com.databricks.zerobus.examples.json.SingleRecordExample
 
-# Run batch example (225 records)
+# Run batch example
 java -cp ".:../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
   com.databricks.zerobus.examples.json.BatchIngestionExample
 ```
@@ -174,7 +172,7 @@ javac -d . -cp "../target/classes:$(cd .. && mvn dependency:build-classpath -q -
   proto/com/databricks/zerobus/examples/proto/AirQualityProto.java \
   legacy/LegacyStreamExample.java
 
-# Run legacy example (14 records)
+# Run legacy example
 java -cp ".:../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
   com.databricks.zerobus.examples.legacy.LegacyStreamExample
 ```
