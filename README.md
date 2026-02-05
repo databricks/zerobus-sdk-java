@@ -79,10 +79,8 @@ This SDK includes native libraries for the following platforms:
 |----------|--------------|--------|
 | Linux    | x86_64       | Supported |
 | Windows  | x86_64       | Supported |
-| macOS    | x86_64       | Not yet supported |
-| macOS    | aarch64 (Apple Silicon) | Not yet supported |
-
-> **Note:** macOS support is planned for a future release. If you need macOS support, please [file an issue](https://github.com/databricks/zerobus-sdk-java/issues).
+| macOS    | x86_64       | Supported |
+| macOS    | aarch64 (Apple Silicon) | Supported |
 
 ### Dependencies
 

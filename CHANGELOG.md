@@ -66,7 +66,8 @@
 
 - Linux x86_64: Supported
 - Windows x86_64: Supported
-- **macOS: Not yet supported**
+- macOS x86_64: Supported
+- macOS aarch64 (Apple Silicon): Supported
 
 ## Release v0.1.0
 
