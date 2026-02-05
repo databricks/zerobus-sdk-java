@@ -143,7 +143,10 @@ public class ZerobusStream<RecordType extends Message> extends BaseZerobusStream
    * using {@link ZerobusProtoStream#getUnackedRecords(com.google.protobuf.Parser)} instead.
    *
    * @return an iterator over the unacknowledged records (currently returns empty iterator)
+   * @deprecated This method cannot deserialize records due to type erasure. Use {@link
+   *     ZerobusProtoStream#getUnackedRecords(com.google.protobuf.Parser)} instead.
    */
+  @Deprecated
   public Iterator<RecordType> getUnackedRecords() {
     logger.warn(
         "getUnackedRecords() cannot deserialize records without a parser. "
