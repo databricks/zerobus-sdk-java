@@ -1,6 +1,5 @@
 package com.databricks.zerobus;
 
-import com.google.protobuf.Descriptors;
 import com.google.protobuf.Message;
 
 /**
@@ -42,21 +41,11 @@ public class TableProperties<RecordType extends Message> {
   }
 
   /**
-   * Gets the descriptor proto for the record type.
-   *
-   * @return the descriptor proto
-   */
-  Descriptors.Descriptor getDescriptor() {
-    return defaultInstance.getDescriptorForType();
-  }
-
-  /**
    * Gets the DescriptorProto for the record type. This is used to send the schema to the server.
    *
    * @return the DescriptorProto
    */
   com.google.protobuf.DescriptorProtos.DescriptorProto getDescriptorProto() {
-    Descriptors.Descriptor descriptor = getDescriptor();
-    return descriptor.toProto();
+    return defaultInstance.getDescriptorForType().toProto();
   }
 }

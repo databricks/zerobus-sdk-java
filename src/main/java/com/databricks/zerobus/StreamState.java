@@ -14,21 +14,21 @@ package com.databricks.zerobus;
  * </pre>
  */
 public enum StreamState {
-  /** Stream created but not yet initialized */
+  /** Stream created but not yet initialized. */
   UNINITIALIZED,
 
-  /** Stream is open and accepting records */
+  /** Stream is open and accepting records. */
   OPENED,
 
-  /** Stream is flushing pending records before closing */
+  /** Stream is flushing pending records before closing. */
   FLUSHING,
 
-  /** Stream is recovering from a failure (automatic retry in progress) */
+  /** Stream is recovering from a failure (automatic retry in progress). */
   RECOVERING,
 
-  /** Stream has been gracefully closed */
+  /** Stream has been gracefully closed. */
   CLOSED,
 
-  /** Stream has failed and cannot be recovered */
+  /** Stream has failed and cannot be recovered. */
   FAILED
 }

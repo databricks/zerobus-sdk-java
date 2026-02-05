@@ -85,19 +85,19 @@ public class GenerateProto {
   }
 
   private static void run(Args args) throws Exception {
-    // Get OAuth token
+    // Get OAuth token.
     String token = getOAuthToken(args.ucEndpoint, args.clientId, args.clientSecret);
 
-    // Fetch table information from Unity Catalog
+    // Fetch table information from Unity Catalog.
     Map<String, Object> tableInfo = fetchTableInfo(args.ucEndpoint, token, args.table);
 
-    // Extract column information
+    // Extract column information.
     List<Map<String, Object>> columns = extractColumns(tableInfo);
 
-    // Determine message name
+    // Determine message name.
     String messageName = args.protoMsg != null ? args.protoMsg : args.table.split("\\.")[2];
 
-    // Generate proto file
+    // Generate proto file.
     generateProtoFile(messageName, columns, args.output);
   }
 
@@ -138,7 +138,7 @@ public class GenerateProto {
       }
     }
 
-    // Validate required arguments
+    // Validate required arguments.
     if (result.ucEndpoint == null) {
       throw new IllegalArgumentException("Missing required argument: --uc-endpoint");
     }
@@ -174,10 +174,10 @@ public class GenerateProto {
       throws Exception {
     String urlString = ucEndpoint + "/oidc/v1/token";
 
-    // Build OAuth 2.0 client credentials request with minimal scope
+    // Build OAuth 2.0 client credentials request with minimal scope.
     String formData = "grant_type=client_credentials&scope=all-apis";
 
-    // Encode credentials for HTTP Basic authentication
+    // Encode credentials for HTTP Basic authentication.
     String credentials =
         Base64.getEncoder()
             .encodeToString((clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
@@ -202,7 +202,7 @@ public class GenerateProto {
 
     String responseBody = readStream(connection.getInputStream());
 
-    // Extract access token using regex to avoid dependency on a JSON library
+    // Extract access token using regex to avoid dependency on a JSON library.
     Pattern accessTokenPattern = Pattern.compile("\"access_token\"\\s*:\\s*\"([^\"]+)\"");
     Matcher matcher = accessTokenPattern.matcher(responseBody);
 
@@ -271,7 +271,7 @@ public class GenerateProto {
   private static String[] getProtoFieldInfo(String columnType, boolean nullable) {
     String upperType = columnType.toUpperCase();
 
-    // Basic type mapping
+    // Basic type mapping.
     String protoType = null;
     switch (upperType) {
       case "SMALLINT":
@@ -306,12 +306,12 @@ public class GenerateProto {
       return new String[] {nullable ? "optional" : "required", protoType};
     }
 
-    // VARCHAR types
+    // VARCHAR types.
     if (upperType.startsWith("VARCHAR")) {
       return new String[] {nullable ? "optional" : "required", "string"};
     }
 
-    // Array types
+    // Array types.
     Pattern arrayPattern = Pattern.compile("^ARRAY<(.+)>$");
     Matcher arrayMatcher = arrayPattern.matcher(upperType);
     if (arrayMatcher.matches()) {
@@ -323,7 +323,7 @@ public class GenerateProto {
       return new String[] {"repeated", elementProtoType};
     }
 
-    // Map types
+    // Map types.
     Pattern mapPattern = Pattern.compile("^MAP<(.+),(.+)>$");
     Matcher mapMatcher = mapPattern.matcher(upperType);
     if (mapMatcher.matches()) {
@@ -395,7 +395,7 @@ public class GenerateProto {
     protoContent.append("\n");
     protoContent.append("message ").append(messageName).append(" {\n");
 
-    // Add fields
+    // Add fields.
     int fieldNumber = 1;
     for (Map<String, Object> col : columns) {
       String fieldName = (String) col.get("name");
@@ -407,7 +407,7 @@ public class GenerateProto {
       String protoType = fieldInfo[1];
 
       if (fieldModifier.isEmpty()) {
-        // Map type (no modifier)
+        // Map type (no modifier).
         protoContent
             .append("    ")
             .append(protoType)
@@ -417,7 +417,7 @@ public class GenerateProto {
             .append(fieldNumber)
             .append(";\n");
       } else {
-        // Regular field or repeated field
+        // Regular field or repeated field.
         protoContent
             .append("    ")
             .append(fieldModifier)
@@ -434,7 +434,7 @@ public class GenerateProto {
 
     protoContent.append("}\n");
 
-    // Write to file
+    // Write to file.
     try (FileWriter writer = new FileWriter(outputPath)) {
       writer.write(protoContent.toString());
     }
@@ -611,7 +611,7 @@ public class GenerateProto {
               sb.append('\t');
               break;
             case 'u':
-              // Unicode escape
+              // Unicode escape.
               if (pos + 4 >= json.length()) {
                 throw new IllegalArgumentException("Invalid unicode escape");
               }

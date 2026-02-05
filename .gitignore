@@ -19,7 +19,16 @@ buildNumber.properties
 .settings/
 .project
 .classpath
+.metals/
+.bsp/
+.bazelbsp/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Compiled class files
+*.class
+
+# Generated proto files in examples
+examples/proto/**/AirQualityProto.java

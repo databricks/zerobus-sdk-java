@@ -2,128 +2,200 @@
 
 This directory contains example applications demonstrating different usage patterns of the Zerobus Ingest SDK for Java.
 
-## Examples
+## Overview
 
-### 1. Blocking Ingestion (`BlockingIngestionExample.java`)
+The examples are organized by stream type and demonstrate both single-record and batch ingestion patterns.
 
-Demonstrates synchronous record ingestion where each record is waited for before proceeding to the next.
+**Features demonstrated:**
+- `ZerobusProtoStream` - Protocol Buffer ingestion with method-level generics
+- `ZerobusJsonStream` - JSON ingestion with flexible serialization
+- `ZerobusStream` (deprecated) - Legacy Future-based API for backward compatibility
 
-**Best for:**
-- Low-volume ingestion (< 1000 records/sec)
-- Use cases requiring immediate confirmation per record
-- Critical data where you need to handle errors immediately
+## Directory Structure
 
-**Key features:**
-- Waits for each record to be durably written
-- Simple error handling
-- Predictable behavior
-- Lower throughput
-
-**Run:**
-```bash
-javac -cp "../target/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar" \
-  src/main/java/com/databricks/zerobus/examples/BlockingIngestionExample.java
-
-java -cp "../target/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar:src/main/java" \
-  com.databricks.zerobus.examples.BlockingIngestionExample
+```
+examples/
+├── README.md              (this file)
+├── proto/                 (Protocol Buffer examples - ZerobusProtoStream)
+│   ├── README.md
+│   ├── AirQualityProto.java  (generated proto)
+│   ├── SingleRecordExample.java
+│   └── BatchIngestionExample.java
+├── json/                  (JSON examples - ZerobusJsonStream)
+│   ├── README.md
+│   ├── SingleRecordExample.java
+│   └── BatchIngestionExample.java
+└── legacy/                (Legacy examples - ZerobusStream)
+    └── LegacyStreamExample.java
 ```
 
-### 2. Non-Blocking Ingestion (`NonBlockingIngestionExample.java`)
+## Examples Overview
 
-Demonstrates asynchronous record ingestion for maximum throughput.
+| Example | Stream Class | Description |
+|---------|--------------|-------------|
+| `proto/SingleRecordExample` | `ZerobusProtoStream` | Single record ingestion (Message + byte[]) |
+| `proto/BatchIngestionExample` | `ZerobusProtoStream` | Batch ingestion |
+| `json/SingleRecordExample` | `ZerobusJsonStream` | Single record ingestion (Object + String) |
+| `json/BatchIngestionExample` | `ZerobusJsonStream` | Batch ingestion |
+| `legacy/LegacyStreamExample` | `ZerobusStream` | Legacy Future-based API |
 
-**Best for:**
-- High-volume ingestion (> 10,000 records/sec)
-- Batch processing scenarios
-- Stream processing applications
-- Maximum throughput requirements
+Each example demonstrates: single ingestion + wait, batch ingestion + wait for last, and recreateStream.
 
-**Key features:**
-- Asynchronous ingestion with CompletableFutures
-- Automatic buffering and flow control
-- Ack callback for progress tracking
-- Batch flush at the end
-- Higher throughput
+## Stream Classes
 
-**Run:**
-```bash
-javac -cp "../target/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar" \
-  src/main/java/com/databricks/zerobus/examples/NonBlockingIngestionExample.java
-
-java -cp "../target/databricks-zerobus-ingest-sdk-0.1.0-jar-with-dependencies.jar:src/main/java" \
-  com.databricks.zerobus.examples.NonBlockingIngestionExample
-```
-
-## Configuration
-
-Before running the examples, update the following constants in each example file:
+### ZerobusProtoStream (Recommended for Protocol Buffers)
 
 ```java
-private static final String SERVER_ENDPOINT = "your-shard-id.zerobus.region.cloud.databricks.com";
-private static final String UNITY_CATALOG_ENDPOINT = "https://your-workspace.cloud.databricks.com";
-private static final String TABLE_NAME = "catalog.schema.table";
-private static final String CLIENT_ID = "your-oauth-client-id";
-private static final String CLIENT_SECRET = "your-oauth-client-secret";
+ZerobusProtoStream stream = sdk.createProtoStream(
+    tableName,
+    MyProto.getDescriptor().toProto(),
+    clientId,
+    clientSecret
+).join();
+
+// Method-level generics - flexible typing
+stream.ingestRecordOffset(myProtoMessage);        // Message
+stream.ingestRecordOffset(preEncodedBytes);       // byte[]
+stream.ingestRecordsOffset(listOfMessages);       // batch
+stream.ingestRecordsOffset(listOfByteArrays);     // batch
 ```
 
-## Protobuf Schema
+### ZerobusJsonStream (Recommended for JSON)
 
-The examples use an `AirQuality` message defined as:
+```java
+ZerobusJsonStream stream = sdk.createJsonStream(
+    tableName,
+    clientId,
+    clientSecret
+).join();
 
-```proto
-syntax = "proto2";
-
-message AirQuality {
-    optional string device_name = 1;
-    optional int32 temp = 2;
-    optional int64 humidity = 3;
-}
+// Method-level generics - flexible typing
+stream.ingestRecordOffset(object, gson::toJson);  // Object + serializer
+stream.ingestRecordOffset(jsonString);            // String
+stream.ingestRecordsOffset(objects, gson::toJson);// batch
+stream.ingestRecordsOffset(jsonStrings);          // batch
 ```
 
-To use your own schema:
-1. Define your `.proto` file
-2. Generate Java classes: `protoc --java_out=. your_schema.proto`
-3. Update the examples to use your message type instead of `Record.AirQuality`
+### ZerobusStream (Deprecated)
 
-## Performance Comparison
+```java
+@SuppressWarnings("deprecation")
+ZerobusStream<MyProto> stream = sdk.createStream(
+    tableProperties, clientId, clientSecret
+).join();
 
-Typical performance characteristics (results may vary):
+// Class-level generics - fixed type, Future-based
+stream.ingestRecord(myProtoMessage).join();  // CompletableFuture<Void>
+```
 
-| Metric | Blocking | Non-Blocking |
-|--------|----------|--------------|
-| Throughput | ~100-500 records/sec | ~10,000-50,000 records/sec |
-| Latency (avg) | Low per record | Higher per record, lower overall |
-| Memory usage | Low | Medium (buffering) |
-| Complexity | Simple | Moderate |
-| Error handling | Immediate | Deferred to flush |
+## Prerequisites
 
-## Best Practices
+### 1. Create a Delta Table
 
-1. **Choose the right pattern**: Use blocking for low-volume/critical data, non-blocking for high-volume
-2. **Monitor progress**: Use `ackCallback` in non-blocking mode to track progress
-3. **Handle errors**: Always wrap ingestion in try-catch blocks
-4. **Close streams**: Always close streams in a `finally` block or use try-with-resources
-5. **Tune buffer size**: Adjust `maxInflightRecords` based on your throughput needs
+```sql
+CREATE TABLE <catalog>.default.air_quality (
+    device_name STRING,
+    temp INT,
+    humidity BIGINT
+) USING DELTA;
+```
 
-## Common Issues
+### 2. Set Up Service Principal
 
-### Out of Memory
-Increase JVM heap size:
+Create a service principal with `SELECT` and `MODIFY` permissions on the table.
+
+### 3. Set Environment Variables
+
 ```bash
-java -Xmx4g -cp ... com.databricks.zerobus.examples.NonBlockingIngestionExample
+export ZEROBUS_SERVER_ENDPOINT="<workspace-id>.zerobus.<region>.cloud.databricks.com"
+export DATABRICKS_WORKSPACE_URL="https://<workspace>.cloud.databricks.com"
+export ZEROBUS_TABLE_NAME="<catalog>.<schema>.<table>"
+export DATABRICKS_CLIENT_ID="your-client-id"
+export DATABRICKS_CLIENT_SECRET="your-client-secret"
 ```
 
-### Authentication Failures
-- Verify your CLIENT_ID and CLIENT_SECRET are correct
-- Check that your OAuth client has permissions for the target table
+### 4. Build the SDK
 
-### Slow Performance
-- Use non-blocking mode for better throughput
-- Increase `maxInflightRecords` in stream configuration
-- Check network connectivity to the Zerobus endpoint
+```bash
+cd ..  # Go to SDK root
+mvn package -DskipTests
+```
+
+## Running Examples
+
+### Protocol Buffer Examples
+
+```bash
+cd examples
+
+# Compile examples
+javac -d . -cp "../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
+  proto/com/databricks/zerobus/examples/proto/AirQualityProto.java \
+  proto/SingleRecordExample.java \
+  proto/BatchIngestionExample.java
+
+# Run single record example
+java -cp ".:../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
+  com.databricks.zerobus.examples.proto.SingleRecordExample
+
+# Run batch example
+java -cp ".:../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
+  com.databricks.zerobus.examples.proto.BatchIngestionExample
+```
+
+### JSON Examples
+
+```bash
+cd examples
+
+# Compile examples
+javac -d . -cp "../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
+  json/SingleRecordExample.java \
+  json/BatchIngestionExample.java
+
+# Run single record example
+java -cp ".:../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
+  com.databricks.zerobus.examples.json.SingleRecordExample
+
+# Run batch example
+java -cp ".:../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
+  com.databricks.zerobus.examples.json.BatchIngestionExample
+```
+
+### Legacy Examples
+
+```bash
+cd examples
+
+# Compile (requires proto for AirQuality)
+javac -d . -cp "../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
+  proto/com/databricks/zerobus/examples/proto/AirQualityProto.java \
+  legacy/LegacyStreamExample.java
+
+# Run legacy example
+java -cp ".:../target/classes:$(cd .. && mvn dependency:build-classpath -q -DincludeScope=runtime -Dmdep.outputFile=/dev/stdout)" \
+  com.databricks.zerobus.examples.legacy.LegacyStreamExample
+```
+
+## Choosing the Right Stream
+
+| Use Case | Stream Class | Why |
+|----------|--------------|-----|
+| Protocol Buffers (new code) | `ZerobusProtoStream` | Method-level generics, batch support |
+| JSON (new code) | `ZerobusJsonStream` | Clean API, no proto dependency |
+| Existing code with `ZerobusStream` | `ZerobusStream` | Backward compatible, migrate later |
+
+## API Comparison
+
+| Feature | ZerobusProtoStream | ZerobusJsonStream | ZerobusStream |
+|---------|-------------------|-------------------|---------------|
+| Generics | Method-level | Method-level | Class-level |
+| Return Type | `long` offset | `long` offset | `CompletableFuture` |
+| Batch Support | Yes | Yes | No |
+| Status | **Recommended** | **Recommended** | Deprecated |
 
 ## Additional Resources
 
 - [SDK Documentation](../README.md)
+- [Changelog](../CHANGELOG.md)
 - [Protocol Buffers Guide](https://developers.google.com/protocol-buffers)
-- [Databricks Documentation](https://docs.databricks.com)
