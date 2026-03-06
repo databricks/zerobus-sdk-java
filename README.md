@@ -1,10 +1,20 @@
+> **This repository has been moved to [databricks/zerobus-sdk](https://github.com/databricks/zerobus-sdk/tree/main/java).** This repo is archived and read-only. All new development, issues, and pull requests should go to the [monorepo](https://github.com/databricks/zerobus-sdk).
+>
+> | SDK | Link |
+> |-----|------|
+> | Rust | [databricks/zerobus-sdk/rust](https://github.com/databricks/zerobus-sdk/tree/main/rust) |
+> | TypeScript | [databricks/zerobus-sdk/typescript](https://github.com/databricks/zerobus-sdk/tree/main/typescript) |
+> | Java | [databricks/zerobus-sdk/java](https://github.com/databricks/zerobus-sdk/tree/main/java) |
+> | Python | [databricks/zerobus-sdk/python](https://github.com/databricks/zerobus-sdk/tree/main/python) |
+> | Go | [databricks/zerobus-sdk/go](https://github.com/databricks/zerobus-sdk/tree/main/go) |
+
 # Databricks Zerobus Ingest SDK for Java
 
-[Public Preview](https://docs.databricks.com/release-notes/release-types.html): This SDK is supported for production use cases and is available to all customers. Databricks is actively working on stabilizing the Zerobus Ingest SDK for Java. Minor version updates may include backwards-incompatible changes.
+[GA](https://docs.databricks.com/release-notes/release-types.html): This SDK is generally available and supported for production use cases. Minor and patch version updates will not contain breaking changes. Major version updates may include breaking changes.
 
-We are keen to hear feedback from you on this SDK. Please [file issues](https://github.com/databricks/zerobus-sdk-java/issues), and we will address them.
+We are keen to hear feedback from you on this SDK. Please [file issues](https://github.com/databricks/zerobus-sdk/issues), and we will address them.
 
-The Databricks Zerobus Ingest SDK for Java provides a high-performance client for ingesting data directly into Databricks Delta tables using the Zerobus streaming protocol. | See also the [SDK for Rust](https://github.com/databricks/zerobus-sdk-rs) | See also the [SDK for Python](https://github.com/databricks/zerobus-sdk-py)
+The Databricks Zerobus Ingest SDK for Java provides a high-performance client for ingesting data directly into Databricks Delta tables using the Zerobus streaming protocol.
 
 ## Table of Contents
 
